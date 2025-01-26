@@ -1,73 +1,48 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'auth_service.dart';
 import 'signup.dart';
 
-class SigninScreen extends StatefulWidget {
-  const SigninScreen({Key? key}) : super(key: key);
-
-  @override
-  State<SigninScreen> createState() => _SigninScreenState();
-}
-
-class _SigninScreenState extends State<SigninScreen> {
+class SigninScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   Future<void> signIn(BuildContext context) async {
     try {
-      final FirebaseAuth auth = FirebaseAuth.instance;
-      UserCredential userCredential = await auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-      if (userCredential.user != null) {
+      final user = await AuthService()
+          .loginUserWithEmailAndPassword(
+            emailController.text.trim(),
+            passwordController.text.trim(),
+          );
+      if (user != null) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnackBar(context, e.toString());
     }
   }
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        // The user canceled the sign-in
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      if (userCredential.user != null) {
+      final user = await AuthService().signInWithGoogle();
+      if (user != null) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnackBar(context, e.toString());
     }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -107,72 +82,19 @@ class _SigninScreenState extends State<SigninScreen> {
               const SizedBox(height: 40),
 
               // Email Text Field
-              TextFormField(
-                controller: emailController,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(emailController, 'Email', false),
               const SizedBox(height: 16),
 
               // Password Text Field
-              TextFormField(
-                controller: passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(passwordController, 'Password', true),
               const SizedBox(height: 24),
 
               // Signin Button
-              ElevatedButton(
-                onPressed: () => signIn(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5CB85C), // Green color
-                  minimumSize: const Size(double.infinity, 56), // Larger button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Sign in',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+              _buildActionButton(
+                context,
+                'Sign in',
+                () => signIn(context),
+                backgroundColor: const Color(0xFF5CB85C),
               ),
               const SizedBox(height: 24),
 
@@ -188,30 +110,13 @@ class _SigninScreenState extends State<SigninScreen> {
               const SizedBox(height: 24),
 
               // Continue with Google Button
-              ElevatedButton(
-                onPressed: () => signInWithGoogle(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 56), // Larger button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.g_mobiledata, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      'Continue With Google',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+              _buildActionButton(
+                context,
+                'Continue With Google',
+                () => signInWithGoogle(context),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                icon: const Icon(Icons.g_mobiledata, size: 24),
               ),
               const SizedBox(height: 30),
 
@@ -228,8 +133,7 @@ class _SigninScreenState extends State<SigninScreen> {
                       // Navigate to sign-up screen
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(builder: (context) => const SignupScreen()),
                       );
                     },
                     child: const Text(
@@ -246,6 +150,67 @@ class _SigninScreenState extends State<SigninScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper method to build text fields
+  Widget _buildTextField(
+      TextEditingController controller, String label, bool isPassword) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF5CB85C), width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.black,
+      ),
+    );
+  }
+
+  // Helper method to build action buttons
+  Widget _buildActionButton(
+    BuildContext context,
+    String text,
+    VoidCallback onPressed, {
+    required Color backgroundColor,
+    Color foregroundColor = Colors.white,
+    Widget? icon,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) icon,
+          if (icon != null) const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: foregroundColor,
+            ),
+          ),
+        ],
       ),
     );
   }

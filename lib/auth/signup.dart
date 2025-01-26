@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:fitsync_app/auth/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
+import 'auth_service.dart';
+import 'package:fitsync_app/widgets/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -21,43 +22,99 @@ class _SignupScreenState extends State<SignupScreen> {
     final confirmPassword = _confirmPasswordController.text.trim();
 
     if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+      _showSnackBar("Please fill all fields");
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
+      _showSnackBar("Passwords do not match");
       return;
     }
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Signup Successful!")),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SigninScreen()),
-      );
+      final user = await AuthService().createUserWithEmailAndPassword(email, password);
+
+      if (user != null) {
+        _showSnackBar("Signup Successful!");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SigninScreen()),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnackBar(e.toString());
     }
+  }
+
+  Future<void> signUpWithGoogle(BuildContext context) async {
+    try {
+      final user = await AuthService().signInWithGoogle();
+
+      if (user != null) {
+        _showSnackBar("Signup Successful!");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SigninScreen()),
+        );
+      }
+    } catch (e) {
+      _showSnackBar(e.toString());
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildTextField({required String label, required TextEditingController controller, bool obscureText = false}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF5CB85C), width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.black,
+      ),
+    );
+  }
+
+  Widget _buildButton({required String text, required VoidCallback onPressed, Color backgroundColor = const Color(0xFF5CB85C), Color textColor = Colors.white}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false, // Prevents components from moving when keyboard appears
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -87,92 +144,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(label: 'Email', controller: _emailController),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(label: 'Password', controller: _passwordController, obscureText: true),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(label: 'Confirm Password', controller: _confirmPasswordController, obscureText: true),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => _signup(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5CB85C),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Signup',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              _buildButton(text: 'Sign Up', onPressed: () => _signup(context)),
               const SizedBox(height: 24),
               const Text(
                 'OR',
@@ -183,32 +161,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  // Add Google authentication logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.g_mobiledata, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      'Continue With Google',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+              _buildButton(
+                text: 'Continue With Google',
+                onPressed: () => signUpWithGoogle(context),
+                backgroundColor: Colors.white,
+                textColor: Colors.black,
               ),
               const SizedBox(height: 30),
               Row(
@@ -222,8 +179,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const SigninScreen()),
+                        MaterialPageRoute(builder: (context) => SigninScreen()),
                       );
                     },
                     child: const Text(
