@@ -1,4 +1,3 @@
-import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'signup.dart';
@@ -17,7 +16,10 @@ class SigninScreen extends StatelessWidget {
       if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          MaterialPageRoute(
+            builder: (context) =>
+                ProfileScreen(userEmail: emailController.text.trim()),
+          ),
         );
       }
     } catch (e) {
@@ -28,11 +30,15 @@ class SigninScreen extends StatelessWidget {
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final user = await AuthService().signInWithGoogle();
-      if (user != null) {
+      if (user != null && user.email != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(userEmail: user.email!),
+          ),
         );
+      } else {
+        _showSnackBar(context, "Unable to retrieve email from Google sign-in.");
       }
     } catch (e) {
       _showSnackBar(context, e.toString());

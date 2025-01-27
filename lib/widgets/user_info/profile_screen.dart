@@ -1,10 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui';
+import 'gender_selection.dart'; // Import the GenderSelectionScreen
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  final String userEmail; // Pass the logged-in user's email
+
+  const ProfileScreen({Key? key, required this.userEmail}) : super(key: key);
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -13,6 +18,42 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(widget.userEmail).get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+
+        _firstNameController.text = data['firstName'] ?? '';
+        _lastNameController.text = data['lastName'] ?? '';
+        _emailController.text = data['email'] ?? '';
+
+        if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
+          setState(() {
+            _profileImage = File(data['profileImage']);
+          });
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching data: $e")),
+      );
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? pickedFile = await _picker.pickImage(source: source);
@@ -24,16 +65,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _saveData() async {
+    final String firstName = _firstNameController.text.trim();
+    final String lastName = _lastNameController.text.trim();
+    final String email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email is required")),
+      );
+      return;
+    }
+
+    try {
+      await _firestore.collection('users').doc(email).set({
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'profileImage': _profileImage?.path ?? '',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Data saved successfully")),
+      );
+
+      // Redirect to GenderSelectionScreen after saving
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const GenderSelectionScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving data: $e")),
+      );
+    }
+  }
+
   void _showImageInFullScreen() {
     showDialog(
       context: context,
-      barrierDismissible: true, // Allows dismissing when tapping outside
+      barrierDismissible: true,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Background blur effect
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -42,16 +118,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            // Fullscreen profile image
             GestureDetector(
               onTap: () {
                 Navigator.of(context).pop();
               },
               child: CircleAvatar(
                 radius: 120,
-                backgroundImage: _profileImage != null
-                    ? FileImage(_profileImage!)
-                    : null,
+                backgroundImage:
+                    _profileImage != null ? FileImage(_profileImage!) : null,
                 child: _profileImage == null
                     ? const Icon(
                         Icons.person,
@@ -84,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      resizeToAvoidBottomInset: false, // Prevents resizing when the keyboard appears
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -161,6 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 40),
                 TextField(
+                  controller: _firstNameController,
                   decoration: InputDecoration(
                     labelText: 'First Name',
                     labelStyle: const TextStyle(color: Colors.white70),
@@ -177,6 +252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  controller: _lastNameController,
                   decoration: InputDecoration(
                     labelText: 'Last Name',
                     labelStyle: const TextStyle(color: Colors.white70),
@@ -193,6 +269,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  controller: _emailController,
+                  readOnly: true, // Prevent editing the email field
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: const TextStyle(color: Colors.white70),
@@ -211,11 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Next button pressed")),
-                      );
-                    },
+                    onPressed: _saveData,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -224,7 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     child: const Text(
-                      "Next",
+                      "Save",
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.black,

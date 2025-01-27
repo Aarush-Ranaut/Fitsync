@@ -29,13 +29,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _onSlideComplete() {
-    
     if (_slideOffset >= 100) {
       // Directly navigate to WelcomeScreen without fade transition
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const WelcomeScreen()),
       );
-      
     } else {
       setState(() {
         _slideOffset = 0.0; // Reset if slide is incomplete
@@ -58,7 +56,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           children: [
             // FitSync Logo
             const Positioned(
-              left: 100,
+              left: 125,
               top: 120,
               child: Text.rich(
                 TextSpan(
@@ -90,8 +88,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               bottom: 0,
               child: GestureDetector(
                 onVerticalDragUpdate: (details) {
-                  final newOffset = (_slideOffset - (details.primaryDelta ?? 0.0))
-                      .clamp(0.0, 200.0);
+                  final newOffset =
+                      (_slideOffset - (details.primaryDelta ?? 0.0))
+                          .clamp(0.0, 200.0);
                   if (newOffset != _slideOffset) {
                     setState(() => _slideOffset = newOffset);
                   }
@@ -137,7 +136,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           ),
                           // Floating arrow above the "GO" button
                           Positioned(
-                            bottom: _slideOffset + 80 + _floatingAnimation.value,
+                            bottom:
+                                _slideOffset + 80 + _floatingAnimation.value,
                             child: const Icon(
                               Icons.keyboard_arrow_up,
                               color: Colors.black,
