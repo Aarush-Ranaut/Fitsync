@@ -1,76 +1,145 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../auth/signin.dart';
+import '../auth/signin.dart'; // Import the SignIn screen
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final String username;
+  final String profilePictureUrl; // URL for profile picture
+
+  HomeScreen({required this.username, required this.profilePictureUrl});
 
   @override
   Widget build(BuildContext context) {
-    final FirebaseAuth auth = FirebaseAuth.instance;
-
-    Future<void> signOut() async {
-      await auth.signOut();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => SigninScreen()),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home Screen'),
-        backgroundColor: const Color(0xFF5CB85C), // Green color
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: signOut,
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Welcome to the Home Screen!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.grey,
+                    radius: 24,
+                    backgroundImage: profilePictureUrl.isNotEmpty
+                        ? NetworkImage(profilePictureUrl)
+                        : null,
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      // Handle logout logic and redirect to Signin screen
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => SigninScreen()),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.logout,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'User: ${auth.currentUser?.email ?? "No user"}',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: signOut,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, // Red color for logout
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 15,
+              const SizedBox(height: 20),
+              Text(
+                '${DateTime.now().toLocal().toString().split(' ')[0]}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
                 ),
-                shape: RoundedRectangleBorder(
+              ),
+              Text(
+                username,
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Today's Workout",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: 0.6, // 60% progress
+                          backgroundColor: Colors.black,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                        Text(
+                          "60%",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              Spacer(),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: FloatingActionButton(
+                  onPressed: () {},
+                  backgroundColor: Colors.green,
+                  child: Icon(
+                    Icons.camera_alt,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.black,
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Colors.white,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: '',
+          ),
+        ],
       ),
     );
   }

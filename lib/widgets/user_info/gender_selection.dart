@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'height_picker_page.dart';
 
 class GenderSelectionScreen extends StatefulWidget {
   const GenderSelectionScreen({Key? key}) : super(key: key);
@@ -26,8 +27,10 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
         const SnackBar(content: Text("Gender saved successfully!")),
       );
 
-      // Navigate to the next screen or home page
-      Navigator.of(context).pushReplacementNamed('/home'); // Adjust route name as needed
+      // Navigate to the height selection screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => HeightPickerPage()),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a gender.")),
