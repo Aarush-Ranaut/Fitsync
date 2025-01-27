@@ -13,7 +13,7 @@ class HomeScreen extends StatelessWidget {
       await auth.signOut();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SigninScreen()),
+        MaterialPageRoute(builder: (context) => SigninScreen()),
       );
     }
 
