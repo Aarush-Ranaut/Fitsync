@@ -2,6 +2,7 @@ import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'signup.dart';
+import 'package:fitsync_app/widgets/user_info/profile_screen.dart';
 
 class SigninScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
@@ -9,15 +10,14 @@ class SigninScreen extends StatelessWidget {
 
   Future<void> signIn(BuildContext context) async {
     try {
-      final user = await AuthService()
-          .loginUserWithEmailAndPassword(
-            emailController.text.trim(),
-            passwordController.text.trim(),
-          );
+      final user = await AuthService().loginUserWithEmailAndPassword(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
       if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
         );
       }
     } catch (e) {
@@ -31,7 +31,7 @@ class SigninScreen extends StatelessWidget {
       if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
         );
       }
     } catch (e) {
@@ -133,7 +133,8 @@ class SigninScreen extends StatelessWidget {
                       // Navigate to sign-up screen
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const SignupScreen()),
                       );
                     },
                     child: const Text(
