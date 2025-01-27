@@ -1,5 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:fitsync_app/firebase_options.dart';
+
 import 'package:fitsync_app/onboarding_screen.dart';
 import 'package:flutter/material.dart';
 
