@@ -16,21 +16,34 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   // Save selected gender to Firestore
   Future<void> _saveGender() async {
     final User? user = FirebaseAuth.instance.currentUser;
-    final email = user?.email;
+    final uid = user?.uid;
 
-    if (email != null && selectedGender != null) {
-      await FirebaseFirestore.instance.collection('users').doc(email).update({
-        'gender': selectedGender,
-      });
-
+    if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gender saved successfully!")),
+        const SnackBar(content: Text("User not logged in")),
       );
+      return;
+    }
 
-      // Navigate to the height selection screen
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => HeightPickerPage()),
-      );
+    if (selectedGender != null) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'gender': selectedGender,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gender saved successfully!")),
+        );
+
+        // Navigate to the height selection screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => HeightPickerPage()),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error saving gender: $e")),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a gender.")),

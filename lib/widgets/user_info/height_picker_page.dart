@@ -13,11 +13,11 @@ class _HeightPickerPageState extends State<HeightPickerPage> {
 
   Future<void> _syncHeightData() async {
     final User? user = FirebaseAuth.instance.currentUser;
-    final email = user?.email;
+    final uid = user?.uid;
 
-    if (email != null) {
+    if (uid != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(email).get();
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
         // If the user document exists, check for height and sync
         if (userDoc.exists) {
@@ -29,7 +29,7 @@ class _HeightPickerPageState extends State<HeightPickerPage> {
         }
 
         // Now, save or update the height in Firestore
-        await FirebaseFirestore.instance.collection('users').doc(email).update({
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'height': _selectedHeight,
         });
 

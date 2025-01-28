@@ -15,15 +15,30 @@ class SigninScreen extends StatelessWidget {
         passwordController.text.trim(),
       );
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-                username: emailController.text.trim(),
-                profilePictureUrl:
-                    ''), // Passing username and profilePictureUrl
-          ),
-        );
+        // Fetch user data from Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          String username = userDoc.data()?['username'] ?? user.email ?? '';
+          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          // User document not found, sign out and show error
+          await AuthService().signOut();
+          _showSnackBar(context, "User data not found. Please sign up.");
+        }
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
@@ -41,13 +56,16 @@ class SigninScreen extends StatelessWidget {
         // Check if the user exists in Firestore using UID
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
-            .doc(user.uid) // Use UID instead of email
+            .doc(user.uid)
             .get();
 
         if (userDoc.exists) {
-          // User exists, proceed to HomeScreen
-          final username = user.displayName ?? user.email ?? 'User';
-          final profilePictureUrl = user.photoURL ?? '';
+          // Get username and profile picture from Firestore
+          String username = userDoc.data()?['username'] ??
+              user.displayName ??
+              user.email ??
+              'User';
+          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
 
           Navigator.pushReplacement(
             context,
@@ -60,7 +78,7 @@ class SigninScreen extends StatelessWidget {
           );
         } else {
           // User does not exist in Firestore, show error and sign out
-          await AuthService().signOut(); // Ensure user is signed out
+          await AuthService().signOut();
           _showSnackBar(context, "Account not found. Please sign up.");
         }
       } else {

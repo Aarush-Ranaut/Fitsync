@@ -13,14 +13,12 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
 
   Future<void> _syncWeightData() async {
     final User? user = FirebaseAuth.instance.currentUser;
-    final email = user?.email;
+    final uid = user?.uid;
 
-    if (email != null) {
+    if (uid != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(email)
-            .get();
+        final userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
         // If the user document exists, check for weight and sync
         if (userDoc.exists) {
@@ -32,7 +30,7 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
         }
 
         // Now, save or update the weight in Firestore
-        await FirebaseFirestore.instance.collection('users').doc(email).update({
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'weight': _selectedWeight,
         });
 
@@ -43,15 +41,14 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
         // Fetch user's first name and profile picture URL for redirection
         String firstName = '';
         String profilePictureUrl = '';
-        final userSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(email)
-            .get();
+        final userSnapshot =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
         if (userSnapshot.exists) {
           final userData = userSnapshot.data() as Map<String, dynamic>;
           firstName = userData['firstName'] ?? 'User';
-          profilePictureUrl = userData['profileImage'] ?? ''; // Handle default image or empty
+          profilePictureUrl =
+              userData['profileImage'] ?? ''; // Handle default image or empty
         }
 
         // Redirect to HomeScreen with the fetched user data

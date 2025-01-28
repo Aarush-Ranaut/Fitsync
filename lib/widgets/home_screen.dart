@@ -1,25 +1,88 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import '../auth/signin.dart'; // Import the SignIn screen
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../auth/signin.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final String username;
-  final String profilePictureUrl; // URL for profile picture
+  final String profilePictureUrl;
 
   HomeScreen({required this.username, required this.profilePictureUrl});
 
-  void _logout(BuildContext context) {
-    // Clear any user session or state here
-    // For example, if you're using shared preferences to store user data:
-    // await SharedPreferences.getInstance().then((prefs) {
-    //   prefs.remove('userToken');
-    //   prefs.remove('username');
-    // });
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
 
-    // Navigate to the SignIn screen and remove all previous routes
+class _HomeScreenState extends State<HomeScreen> {
+  late String _profilePictureUrl;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _profilePictureUrl = widget.profilePictureUrl;
+    _fetchUserData(); // Fetch user data on initialization
+  }
+
+  Future<void> _fetchUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (userDoc.exists) {
+        setState(() {
+          _profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
+        });
+      }
+    }
+  }
+
+  Future<void> _openCamera() async {
+    try {
+      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+
+      if (photo != null) {
+        // Upload to Firebase Storage
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          Reference storageRef = FirebaseStorage.instance
+              .ref()
+              .child('profile_pictures/${user.uid}.jpg');
+
+          await storageRef.putFile(File(photo.path));
+          String newUrl = await storageRef.getDownloadURL();
+
+          // Update Firestore
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'profilePictureUrl': newUrl});
+
+          // Update local state
+          setState(() {
+            _profilePictureUrl = newUrl;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error taking photo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile picture')),
+      );
+    }
+  }
+
+  void _logout(BuildContext context) {
+    FirebaseAuth.instance.signOut(); // Sign out the user
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => SigninScreen()),
-      (Route<dynamic> route) => false, // This removes all routes
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -37,97 +100,36 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   CircleAvatar(
-                    backgroundColor: Colors.grey,
                     radius: 24,
-                    backgroundImage: profilePictureUrl.isNotEmpty
-                        ? NetworkImage(profilePictureUrl)
+                    backgroundImage: _profilePictureUrl.isNotEmpty
+                        ? NetworkImage(_profilePictureUrl)
+                        : null,
+                    child: _profilePictureUrl.isEmpty
+                        ? Icon(Icons.person, color: Colors.white)
                         : null,
                   ),
                   IconButton(
-                    onPressed: () {
-                      _logout(context); // Call the logout function
-                    },
-                    icon: Icon(
-                      Icons.logout,
-                      color: Colors.white,
-                    ),
+                    onPressed: () => _logout(context),
+                    icon: Icon(Icons.logout, color: Colors.white),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
-                '${DateTime.now().toLocal().toString().split(' ')[0]}',
+                'Welcome, ${widget.username}!',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                username,
-                style: TextStyle(
-                  color: Colors.green,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Today's Workout",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          value: 0.6, // 60% progress
-                          backgroundColor: Colors.black,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                        Text(
-                          "60%",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
               Spacer(),
               Align(
                 alignment: Alignment.bottomRight,
                 child: FloatingActionButton(
-                  onPressed: () {},
+                  onPressed: _openCamera,
                   backgroundColor: Colors.green,
-                  child: Icon(
-                    Icons.camera_alt,
-                    color: Colors.black,
-                  ),
+                  child: Icon(Icons.camera_alt, color: Colors.black),
                 ),
               ),
             ],
@@ -139,18 +141,9 @@ class HomeScreen extends StatelessWidget {
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.white,
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: '',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: ''),
         ],
       ),
     );
