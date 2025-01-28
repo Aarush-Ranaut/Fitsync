@@ -2,7 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
 import 'auth_service.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
+import 'package:fitsync_app/widgets/user_info/profile_screen.dart'; // Import ProfileScreen
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -14,47 +15,68 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
-  Future<void> _signup(BuildContext context) async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      _showSnackBar("Please fill all fields");
-      return;
-    }
-
-    if (password != confirmPassword) {
-      _showSnackBar("Passwords do not match");
-      return;
-    }
-
+  // Updated signUpWithGoogle method
+  Future<void> signUpWithGoogle(BuildContext context) async {
     try {
-      final user = await AuthService().createUserWithEmailAndPassword(email, password);
+      // Sign out from any existing sessions
+      await AuthService().signOut();
+
+      // Sign in with Google
+      final user = await AuthService().signInWithGoogle();
 
       if (user != null) {
-        _showSnackBar("Signup Successful!");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => SigninScreen()),
-        );
+        // Check if the user already exists in Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid) // Use UID instead of email
+            .get();
+
+        if (userDoc.exists) {
+          // Account already exists in Firestore, redirect to sign-in
+          _showSnackBar("Account already exists. Please sign in.");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SigninScreen()),
+          );
+        } else {
+          // New user, navigate to ProfileScreen with UID
+          _showSnackBar("Signup Successful!");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileScreen(userId: user.uid),
+            ),
+          );
+        }
       }
     } catch (e) {
       _showSnackBar(e.toString());
     }
   }
 
-  Future<void> signUpWithGoogle(BuildContext context) async {
+// Updated _signup method
+  Future<void> _signup(BuildContext context) async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    // Validation checks remain the same
+
     try {
-      final user = await AuthService().signInWithGoogle();
+      final user =
+          await AuthService().createUserWithEmailAndPassword(email, password);
 
       if (user != null) {
         _showSnackBar("Signup Successful!");
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => SigninScreen()),
+          MaterialPageRoute(
+            // Pass UID instead of email to ProfileScreen
+            builder: (context) => ProfileScreen(userId: user.uid),
+          ),
         );
       }
     } catch (e) {
@@ -63,10 +85,14 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _buildTextField({required String label, required TextEditingController controller, bool obscureText = false}) {
+  Widget _buildTextField(
+      {required String label,
+      required TextEditingController controller,
+      bool obscureText = false}) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -89,7 +115,11 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildButton({required String text, required VoidCallback onPressed, Color backgroundColor = const Color(0xFF5CB85C), Color textColor = Colors.white}) {
+  Widget _buildButton(
+      {required String text,
+      required VoidCallback onPressed,
+      Color backgroundColor = const Color(0xFF5CB85C),
+      Color textColor = Colors.white}) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -146,9 +176,15 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 40),
               _buildTextField(label: 'Email', controller: _emailController),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Password', controller: _passwordController, obscureText: true),
+              _buildTextField(
+                  label: 'Password',
+                  controller: _passwordController,
+                  obscureText: true),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Confirm Password', controller: _confirmPasswordController, obscureText: true),
+              _buildTextField(
+                  label: 'Confirm Password',
+                  controller: _confirmPasswordController,
+                  obscureText: true),
               const SizedBox(height: 24),
               _buildButton(text: 'Sign Up', onPressed: () => _signup(context)),
               const SizedBox(height: 24),
