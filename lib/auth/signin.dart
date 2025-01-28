@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'signup.dart';
-import 'package:fitsync_app/widgets/user_info/profile_screen.dart';
+import '../widgets/home_screen.dart'; // Import the HomeScreen
 
 class SigninScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
@@ -17,8 +18,10 @@ class SigninScreen extends StatelessWidget {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ProfileScreen(userEmail: emailController.text.trim()),
+            builder: (context) => HomeScreen(
+                username: emailController.text.trim(),
+                profilePictureUrl:
+                    ''), // Passing username and profilePictureUrl
           ),
         );
       }
@@ -29,20 +32,39 @@ class SigninScreen extends StatelessWidget {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      // Sign out from Google first
+      // Sign out from Google first to ensure a fresh sign-in
       await AuthService().signOutFromGoogle();
 
-      // Now initiate Google Sign-In
+      // Sign in with Google
       final user = await AuthService().signInWithGoogle();
-      if (user != null && user.email != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProfileScreen(userEmail: user.email!),
-          ),
-        );
+      if (user != null) {
+        // Check if the user exists in Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid) // Use UID instead of email
+            .get();
+
+        if (userDoc.exists) {
+          // User exists, proceed to HomeScreen
+          final username = user.displayName ?? user.email ?? 'User';
+          final profilePictureUrl = user.photoURL ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          // User does not exist in Firestore, show error and sign out
+          await AuthService().signOut(); // Ensure user is signed out
+          _showSnackBar(context, "Account not found. Please sign up.");
+        }
       } else {
-        _showSnackBar(context, "Unable to retrieve email from Google sign-in.");
+        _showSnackBar(context, "Google sign-in failed.");
       }
     } catch (e) {
       _showSnackBar(context, e.toString());

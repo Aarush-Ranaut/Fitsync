@@ -7,9 +7,9 @@ import 'dart:ui';
 import 'gender_selection.dart'; // Import the GenderSelectionScreen
 
 class ProfileScreen extends StatefulWidget {
-  final String userEmail; // Pass the logged-in user's email
+  final String userId; // Use userId instead of userEmail
 
-  const ProfileScreen({Key? key, required this.userEmail}) : super(key: key);
+  const ProfileScreen({Key? key, required this.userId}) : super(key: key);
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -20,7 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -32,16 +31,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _fetchUserData() async {
     try {
-      final DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(widget.userEmail).get();
+      final DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .get(); // Use userId
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
-
         _firstNameController.text = data['firstName'] ?? '';
         _lastNameController.text = data['lastName'] ?? '';
-        _emailController.text = data['email'] ?? '';
-
         if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
           setState(() {
             _profileImage = File(data['profileImage']);
@@ -68,20 +66,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveData() async {
     final String firstName = _firstNameController.text.trim();
     final String lastName = _lastNameController.text.trim();
-    final String email = _emailController.text.trim();
 
-    if (email.isEmpty) {
+    if (firstName.isEmpty || lastName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email is required")),
+        const SnackBar(content: Text("First name and last name are required")),
       );
       return;
     }
 
     try {
-      await _firestore.collection('users').doc(email).set({
+      await _firestore.collection('users').doc(widget.userId).set({
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
         'profileImage': _profileImage?.path ?? '',
       });
 
@@ -255,24 +251,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   controller: _lastNameController,
                   decoration: InputDecoration(
                     labelText: 'Last Name',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white70),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.green),
-                    ),
-                  ),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _emailController,
-                  readOnly: false, // Prevent editing the email field
-                  decoration: InputDecoration(
-                    labelText: 'Email',
                     labelStyle: const TextStyle(color: Colors.white70),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),

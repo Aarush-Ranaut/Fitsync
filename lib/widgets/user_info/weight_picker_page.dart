@@ -40,13 +40,27 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
           const SnackBar(content: Text("Weight saved successfully!")),
         );
 
-        // Redirect to HomeScreen after saving weight
+        // Fetch user's first name and profile picture URL for redirection
+        String firstName = '';
+        String profilePictureUrl = '';
+        final userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(email)
+            .get();
+
+        if (userSnapshot.exists) {
+          final userData = userSnapshot.data() as Map<String, dynamic>;
+          firstName = userData['firstName'] ?? 'User';
+          profilePictureUrl = userData['profileImage'] ?? ''; // Handle default image or empty
+        }
+
+        // Redirect to HomeScreen with the fetched user data
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => HomeScreen(
-              username: email,
-              profilePictureUrl: '',
+              username: firstName,
+              profilePictureUrl: profilePictureUrl,
             ),
           ),
         );
