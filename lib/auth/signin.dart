@@ -29,6 +29,10 @@ class SigninScreen extends StatelessWidget {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
+      // Sign out from Google first
+      await AuthService().signOutFromGoogle();
+
+      // Now initiate Google Sign-In
       final user = await AuthService().signInWithGoogle();
       if (user != null && user.email != null) {
         Navigator.pushReplacement(

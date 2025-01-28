@@ -7,6 +7,22 @@ class HomeScreen extends StatelessWidget {
 
   HomeScreen({required this.username, required this.profilePictureUrl});
 
+  void _logout(BuildContext context) {
+    // Clear any user session or state here
+    // For example, if you're using shared preferences to store user data:
+    // await SharedPreferences.getInstance().then((prefs) {
+    //   prefs.remove('userToken');
+    //   prefs.remove('username');
+    // });
+
+    // Navigate to the SignIn screen and remove all previous routes
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => SigninScreen()),
+      (Route<dynamic> route) => false, // This removes all routes
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,11 +45,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () {
-                      // Handle logout logic and redirect to Signin screen
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => SigninScreen()),
-                      );
+                      _logout(context); // Call the logout function
                     },
                     icon: Icon(
                       Icons.logout,

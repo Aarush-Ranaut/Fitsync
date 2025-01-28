@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
 import 'auth_service.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
+import 'package:fitsync_app/widgets/user_info/profile_screen.dart'; // Import ProfileScreen
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -14,7 +14,8 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   Future<void> _signup(BuildContext context) async {
     final email = _emailController.text.trim();
@@ -32,13 +33,17 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     try {
-      final user = await AuthService().createUserWithEmailAndPassword(email, password);
+      final user =
+          await AuthService().createUserWithEmailAndPassword(email, password);
 
       if (user != null) {
         _showSnackBar("Signup Successful!");
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => SigninScreen()),
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(
+                userEmail: user.email!), // Pass user.email to ProfileScreen
+          ),
         );
       }
     } catch (e) {
@@ -48,13 +53,23 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> signUpWithGoogle(BuildContext context) async {
     try {
+      // Sign out from any existing sessions
+      await AuthService().signOut();
+
+      // Sign in with Google
       final user = await AuthService().signInWithGoogle();
 
       if (user != null) {
+        // Show success message
         _showSnackBar("Signup Successful!");
+
+        // Navigate to the ProfileScreen
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => SigninScreen()),
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(
+                userEmail: user.email!), // Pass user.email to ProfileScreen
+          ),
         );
       }
     } catch (e) {
@@ -63,10 +78,14 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _buildTextField({required String label, required TextEditingController controller, bool obscureText = false}) {
+  Widget _buildTextField(
+      {required String label,
+      required TextEditingController controller,
+      bool obscureText = false}) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -89,7 +108,11 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildButton({required String text, required VoidCallback onPressed, Color backgroundColor = const Color(0xFF5CB85C), Color textColor = Colors.white}) {
+  Widget _buildButton(
+      {required String text,
+      required VoidCallback onPressed,
+      Color backgroundColor = const Color(0xFF5CB85C),
+      Color textColor = Colors.white}) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -146,9 +169,15 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 40),
               _buildTextField(label: 'Email', controller: _emailController),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Password', controller: _passwordController, obscureText: true),
+              _buildTextField(
+                  label: 'Password',
+                  controller: _passwordController,
+                  obscureText: true),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Confirm Password', controller: _confirmPasswordController, obscureText: true),
+              _buildTextField(
+                  label: 'Confirm Password',
+                  controller: _confirmPasswordController,
+                  obscureText: true),
               const SizedBox(height: 24),
               _buildButton(text: 'Sign Up', onPressed: () => _signup(context)),
               const SizedBox(height: 24),

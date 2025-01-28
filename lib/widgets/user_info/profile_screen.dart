@@ -270,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: _emailController,
-                  readOnly: true, // Prevent editing the email field
+                  readOnly: false, // Prevent editing the email field
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: const TextStyle(color: Colors.white70),
