@@ -1,12 +1,105 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'auth_service.dart';
+import 'signup.dart';
+import '../widgets/home_screen.dart'; // Import the HomeScreen
 
-class SignupScreen extends StatelessWidget {
-  const SignupScreen({super.key});
+class SigninScreen extends StatelessWidget {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  Future<void> signIn(BuildContext context) async {
+    try {
+      final user = await AuthService().loginUserWithEmailAndPassword(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
+      if (user != null) {
+        // Fetch user data from Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          String username = userDoc.data()?['username'] ?? user.email ?? '';
+          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          // User document not found, sign out and show error
+          await AuthService().signOut();
+          _showSnackBar(context, "User data not found. Please sign up.");
+        }
+      }
+    } catch (e) {
+      _showSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> signInWithGoogle(BuildContext context) async {
+    try {
+      // Sign out from Google first to ensure a fresh sign-in
+      await AuthService().signOutFromGoogle();
+
+      // Sign in with Google
+      final user = await AuthService().signInWithGoogle();
+      if (user != null) {
+        // Check if the user exists in Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          // Get username and profile picture from Firestore
+          String username = userDoc.data()?['username'] ??
+              user.displayName ??
+              user.email ??
+              'User';
+          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          // User does not exist in Firestore, show error and sign out
+          await AuthService().signOut();
+          _showSnackBar(context, "Account not found. Please sign up.");
+        }
+      } else {
+        _showSnackBar(context, "Google sign-in failed.");
+      }
+    } catch (e) {
+      _showSnackBar(context, e.toString());
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -39,96 +132,19 @@ class SignupScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               // Email Text Field
-              TextFormField(
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(emailController, 'Email', false),
               const SizedBox(height: 16),
 
               // Password Text Field
-              TextFormField(
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Confirm Password Text Field
-              TextFormField(
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black,
-                ),
-              ),
+              _buildTextField(passwordController, 'Password', true),
               const SizedBox(height: 24),
 
-              // Signup Button
-              ElevatedButton(
-                onPressed: () {
-                  // Add your signup logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5CB85C), // Green color
-                  minimumSize: const Size(double.infinity, 56), // Larger button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Signup',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+              // Signin Button
+              _buildActionButton(
+                context,
+                'Sign in',
+                () => signIn(context),
+                backgroundColor: const Color(0xFF5CB85C),
               ),
               const SizedBox(height: 24),
 
@@ -144,32 +160,13 @@ class SignupScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Continue with Google Button
-              ElevatedButton(
-                onPressed: () {
-                  // Add Google authentication logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 56), // Larger button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.g_mobiledata, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      'Continue With Google',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+              _buildActionButton(
+                context,
+                'Continue With Google',
+                () => signInWithGoogle(context),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                icon: const Icon(Icons.g_mobiledata, size: 24),
               ),
               const SizedBox(height: 30),
 
@@ -183,7 +180,7 @@ class SignupScreen extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to sign-in screen
+                      // Navigate to sign-up screen
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -204,6 +201,67 @@ class SignupScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper method to build text fields
+  Widget _buildTextField(
+      TextEditingController controller, String label, bool isPassword) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF5CB85C), width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.black,
+      ),
+    );
+  }
+
+  // Helper method to build action buttons
+  Widget _buildActionButton(
+    BuildContext context,
+    String text,
+    VoidCallback onPressed, {
+    required Color backgroundColor,
+    Color foregroundColor = Colors.white,
+    Widget? icon,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) icon,
+          if (icon != null) const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: foregroundColor,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -11,43 +11,39 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
   double _slideOffset = 0.0;
-  final double _animationOffset =
-      0.0; // Offset for floating animation of GO button and arrow
   late AnimationController _animationController;
   late Animation<double> _floatingAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Set up animation controller for floating effect
+    // Smooth floating animation
     _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 500), // Shortened for smoothness
       vsync: this,
     )..repeat(reverse: true);
 
-    _floatingAnimation = Tween<double>(begin: 0.0, end: 10.0).animate(
+    _floatingAnimation = Tween<double>(begin: 0.0, end: 12.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
 
   void _onSlideComplete() {
-    if (_slideOffset >= 100.0) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const WelcomeScreen(),
-        ),
+    if (_slideOffset >= 100) {
+      // Directly navigate to WelcomeScreen without fade transition
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
       );
     } else {
       setState(() {
-        _slideOffset = 0.0; // Reset if the slide is incomplete
+        _slideOffset = 0.0; // Reset if slide is incomplete
       });
     }
   }
 
   @override
   void dispose() {
-    _animationController
-        .dispose(); // Dispose the animation controller when done
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -58,17 +54,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            // FitSync Logo at precise position
+            // FitSync Logo
             const Positioned(
-              left: 100, // Adjusted x-coordinate for better positioning
-              top: 120, // Adjusted y-coordinate for better positioning
+              left: 125,
+              top: 120,
               child: Text.rich(
                 TextSpan(
                   text: 'Fit',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize:
-                        50, // Increased font size for a more prominent look
+                    fontSize: 50,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -77,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       text: 'Sync',
                       style: TextStyle(
                         fontFamily: 'Poppins',
-                        fontSize: 50, // Increased font size
+                        fontSize: 50,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF89F336),
                       ),
@@ -86,76 +81,73 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ),
             ),
-            // The whole screen container that moves up with the slide
+            // Draggable container
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                transform: Matrix4.translationValues(0, -_slideOffset, 0),
-                child: GestureDetector(
-                  onVerticalDragUpdate: (details) {
-                    setState(() {
-                      _slideOffset -=
-                          details.primaryDelta ?? 0.0; // Invert drag direction
-                      _slideOffset = _slideOffset.clamp(
-                          0.0, 200.0); // Limit the slide range
-                    });
-                  },
-                  onVerticalDragEnd: (_) => _onSlideComplete(),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Outer green container
-                      Container(
-                        width: 100, // Increased size for prominence
-                        height: 150, // Increased size
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7CBA3B),
-                          borderRadius: BorderRadius.circular(60),
-                        ),
-                      ),
-                      // Positioned animated "GO" button
-                      Positioned(
-                        bottom: _slideOffset + _floatingAnimation.value,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 80, // Increased size
-                          height: 80, // Increased size
-                          decoration: const BoxDecoration(
-                            color: Colors.black,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'GO',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize:
-                                  18, // Increased font size for visibility
+              child: GestureDetector(
+                onVerticalDragUpdate: (details) {
+                  final newOffset =
+                      (_slideOffset - (details.primaryDelta ?? 0.0))
+                          .clamp(0.0, 200.0);
+                  if (newOffset != _slideOffset) {
+                    setState(() => _slideOffset = newOffset);
+                  }
+                },
+                onVerticalDragEnd: (_) => _onSlideComplete(),
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, -_slideOffset),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Green background container
+                          Container(
+                            width: 100,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7CBA3B),
+                              borderRadius: BorderRadius.circular(60),
                             ),
                           ),
-                        ),
-                      ),
-                      // Up arrow icon, above the "GO" button
-                      Positioned(
-                        bottom: _slideOffset +
-                            80 +
-                            _floatingAnimation.value, // Adjusted positioning
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          child: const Icon(
-                            Icons.keyboard_arrow_up,
-                            color: Colors.black,
-                            size:
-                                50, // Increased size of the arrow for better visibility
+                          // Floating "GO" button
+                          Positioned(
+                            bottom: _slideOffset + _floatingAnimation.value,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'GO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          // Floating arrow above the "GO" button
+                          Positioned(
+                            bottom:
+                                _slideOffset + 80 + _floatingAnimation.value,
+                            child: const Icon(
+                              Icons.keyboard_arrow_up,
+                              color: Colors.black,
+                              size: 50,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),

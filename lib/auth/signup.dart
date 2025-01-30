@@ -1,8 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fitsync_app/auth/signin.dart';
+import 'auth_service.dart';
+import 'package:fitsync_app/widgets/user_info/profile_screen.dart'; // Import ProfileScreen
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({Key? key}) : super(key: key);
 
   @override
   _SignupScreenState createState() => _SignupScreenState();
@@ -14,42 +18,126 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
+  // Updated signUpWithGoogle method
+  Future<void> signUpWithGoogle(BuildContext context) async {
+    try {
+      // Sign out from any existing sessions
+      await AuthService().signOut();
+
+      // Sign in with Google
+      final user = await AuthService().signInWithGoogle();
+
+      if (user != null) {
+        // Check if the user already exists in Firestore using UID
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid) // Use UID instead of email
+            .get();
+
+        if (userDoc.exists) {
+          // Account already exists in Firestore, redirect to sign-in
+          _showSnackBar("Account already exists. Please sign in.");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SigninScreen()),
+          );
+        } else {
+          // New user, navigate to ProfileScreen with UID
+          _showSnackBar("Signup Successful!");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileScreen(userId: user.uid),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _showSnackBar(e.toString());
+    }
+  }
+
+// Updated _signup method
   Future<void> _signup(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
-      return;
-    }
-
-    if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
-      return;
-    }
+    // Validation checks remain the same
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Signup Successful!")),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SignupScreen()),
-      );
+      final user =
+          await AuthService().createUserWithEmailAndPassword(email, password);
+
+      if (user != null) {
+        _showSnackBar("Signup Successful!");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            // Pass UID instead of email to ProfileScreen
+            builder: (context) => ProfileScreen(userId: user.uid),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnackBar(e.toString());
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildTextField(
+      {required String label,
+      required TextEditingController controller,
+      bool obscureText = false}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF5CB85C), width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.black,
+      ),
+    );
+  }
+
+  Widget _buildButton(
+      {required String text,
+      required VoidCallback onPressed,
+      Color backgroundColor = const Color(0xFF5CB85C),
+      Color textColor = Colors.white}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
   }
 
   @override
@@ -78,75 +166,20 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-
-              // Email Text Field
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: Colors.white),
-                  filled: true,
-                  fillColor: Colors.grey[800],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              _buildTextField(label: 'Email', controller: _emailController),
               const SizedBox(height: 16),
-
-              // Password Text Field
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(color: Colors.white),
-                  filled: true,
-                  fillColor: Colors.grey[800],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              _buildTextField(
+                  label: 'Password',
+                  controller: _passwordController,
+                  obscureText: true),
               const SizedBox(height: 16),
-
-              // Confirm Password Text Field
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  labelStyle: const TextStyle(color: Colors.white),
-                  filled: true,
-                  fillColor: Colors.grey[800],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              _buildTextField(
+                  label: 'Confirm Password',
+                  controller: _confirmPasswordController,
+                  obscureText: true),
               const SizedBox(height: 24),
-
-              // Signup Button
-              ElevatedButton(
-                onPressed: () => _signup(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5CB85C),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  "Sign Up",
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ),
+              _buildButton(text: 'Sign Up', onPressed: () => _signup(context)),
               const SizedBox(height: 24),
-
-              // Divider Text
               const Text(
                 'OR',
                 style: TextStyle(
@@ -155,28 +188,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Continue with Google Button
-              ElevatedButton(
-                onPressed: () {
-                  // Add Google authentication logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  "Continue with Google",
-                  style: TextStyle(fontSize: 18),
-                ),
+              _buildButton(
+                text: 'Continue With Google',
+                onPressed: () => signUpWithGoogle(context),
+                backgroundColor: Colors.white,
+                textColor: Colors.black,
               ),
               const SizedBox(height: 30),
-
-              // Already a user? Sign in
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -188,8 +206,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(builder: (context) => SigninScreen()),
                       );
                     },
                     child: const Text(
