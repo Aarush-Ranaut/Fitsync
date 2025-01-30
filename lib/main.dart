@@ -1,9 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:fitsync_app/firebase_options.dart';
 import 'package:fitsync_app/onboarding_screen.dart';
 import 'package:flutter/material.dart';
 
-void main()async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const MyApp());
@@ -122,7 +121,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ), // This trailing comma makes auto-formatting nicfigmaer for build methods.
     );
   }
 }

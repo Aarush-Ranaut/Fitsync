@@ -11,7 +11,8 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
   double _slideOffset = 0.0;
-  double _animationOffset =0.0; // Offset for floating animation of GO button and arrow
+  final double _animationOffset =
+      0.0; // Offset for floating animation of GO button and arrow
   late AnimationController _animationController;
   late Animation<double> _floatingAnimation;
 

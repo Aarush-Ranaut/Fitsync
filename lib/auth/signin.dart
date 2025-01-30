@@ -1,47 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'signup.dart';
 
-class SigninScreen extends StatelessWidget {
-  const SigninScreen({Key? key}) : super(key: key);
+class SignupScreen extends StatelessWidget {
+  const SignupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-
-    Future<void> signIn(BuildContext context) async {
-      try {
-        final FirebaseAuth auth = FirebaseAuth.instance;
-        UserCredential userCredential = await auth.signInWithEmailAndPassword(
-          email: emailController.text.trim(),
-          password: passwordController.text.trim(),
-        );
-
-        if (userCredential.user != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-      } catch (e) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Error"),
-            content: Text(e.toString()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -50,12 +13,12 @@ class SigninScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Signin Text
+              // Signup Text
               RichText(
                 text: const TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Sign in',
+                      text: 'Signup',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -77,7 +40,6 @@ class SigninScreen extends StatelessWidget {
 
               // Email Text Field
               TextFormField(
-                controller: emailController,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Email',
@@ -101,7 +63,6 @@ class SigninScreen extends StatelessWidget {
 
               // Password Text Field
               TextFormField(
-                controller: passwordController,
                 obscureText: true,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 decoration: InputDecoration(
@@ -122,11 +83,37 @@ class SigninScreen extends StatelessWidget {
                   fillColor: Colors.black,
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Confirm Password Text Field
+              TextFormField(
+                obscureText: true,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  labelStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: Colors.grey, width: 1.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF5CB85C), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.black,
+                ),
+              ),
               const SizedBox(height: 24),
 
-              // Signin Button
+              // Signup Button
               ElevatedButton(
-                onPressed: () => signIn(context),
+                onPressed: () {
+                  // Add your signup logic here
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF5CB85C), // Green color
                   minimumSize: const Size(double.infinity, 56), // Larger button
@@ -135,7 +122,7 @@ class SigninScreen extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Sign in',
+                  'Signup',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -186,12 +173,12 @@ class SigninScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
 
-              // Don't have an account? Signup
+              // Already a user? Sign in
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Don't have an account? ",
+                    "Already a user? ",
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   GestureDetector(
@@ -204,7 +191,7 @@ class SigninScreen extends StatelessWidget {
                       );
                     },
                     child: const Text(
-                      "Signup",
+                      "Sign in",
                       style: TextStyle(
                         color: Color(0xFF5CB85C),
                         fontSize: 16,
