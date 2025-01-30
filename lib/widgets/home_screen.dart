@@ -6,88 +6,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/signin.dart';
 
-class HomeScreen extends StatefulWidget {
-  final String username;
-  final String profilePictureUrl;
-
-  HomeScreen({required this.username, required this.profilePictureUrl});
-
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  late String _profilePictureUrl;
-  final ImagePicker _picker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    _profilePictureUrl = widget.profilePictureUrl;
-    _fetchUserData(); // Fetch user data on initialization
-  }
-
-  Future<void> _fetchUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (userDoc.exists) {
-        setState(() {
-          _profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
-        });
-      }
-    }
-  }
-
-  Future<void> _openCamera() async {
-    try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-
-      if (photo != null) {
-        // Upload to Firebase Storage
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          Reference storageRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_pictures/${user.uid}.jpg');
-
-          await storageRef.putFile(File(photo.path));
-          String newUrl = await storageRef.getDownloadURL();
-
-          // Update Firestore
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'profilePictureUrl': newUrl});
-
-          // Update local state
-          setState(() {
-            _profilePictureUrl = newUrl;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error taking photo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile picture')),
-      );
-    }
-  }
-
-  void _logout(BuildContext context) {
-    FirebaseAuth.instance.signOut(); // Sign out the user
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => SigninScreen()),
-      (Route<dynamic> route) => false,
-    );
-  }
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final FirebaseAuth auth = FirebaseAuth.instance;
+
+    Future<void> signOut() async {
+      await auth.signOut();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => SigninScreen()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(

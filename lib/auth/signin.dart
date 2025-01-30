@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'signup.dart';
@@ -15,30 +15,10 @@ class SigninScreen extends StatelessWidget {
         passwordController.text.trim(),
       );
       if (user != null) {
-        // Fetch user data from Firestore using UID
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          String username = userDoc.data()?['username'] ?? user.email ?? '';
-          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                username: username,
-                profilePictureUrl: profilePictureUrl,
-              ),
-            ),
-          );
-        } else {
-          // User document not found, sign out and show error
-          await AuthService().signOut();
-          _showSnackBar(context, "User data not found. Please sign up.");
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
@@ -47,42 +27,12 @@ class SigninScreen extends StatelessWidget {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      // Sign out from Google first to ensure a fresh sign-in
-      await AuthService().signOutFromGoogle();
-
-      // Sign in with Google
       final user = await AuthService().signInWithGoogle();
       if (user != null) {
-        // Check if the user exists in Firestore using UID
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          // Get username and profile picture from Firestore
-          String username = userDoc.data()?['username'] ??
-              user.displayName ??
-              user.email ??
-              'User';
-          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                username: username,
-                profilePictureUrl: profilePictureUrl,
-              ),
-            ),
-          );
-        } else {
-          // User does not exist in Firestore, show error and sign out
-          await AuthService().signOut();
-          _showSnackBar(context, "Account not found. Please sign up.");
-        }
-      } else {
-        _showSnackBar(context, "Google sign-in failed.");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
       }
     } catch (e) {
       _showSnackBar(context, e.toString());

@@ -2,8 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
 import 'auth_service.dart';
-import 'package:fitsync_app/widgets/user_info/profile_screen.dart'; // Import ProfileScreen
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:fitsync_app/widgets/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
@@ -18,52 +17,20 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
-  // Updated signUpWithGoogle method
-  Future<void> signUpWithGoogle(BuildContext context) async {
-    try {
-      // Sign out from any existing sessions
-      await AuthService().signOut();
-
-      // Sign in with Google
-      final user = await AuthService().signInWithGoogle();
-
-      if (user != null) {
-        // Check if the user already exists in Firestore using UID
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid) // Use UID instead of email
-            .get();
-
-        if (userDoc.exists) {
-          // Account already exists in Firestore, redirect to sign-in
-          _showSnackBar("Account already exists. Please sign in.");
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => SigninScreen()),
-          );
-        } else {
-          // New user, navigate to ProfileScreen with UID
-          _showSnackBar("Signup Successful!");
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfileScreen(userId: user.uid),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      _showSnackBar(e.toString());
-    }
-  }
-
-// Updated _signup method
   Future<void> _signup(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    // Validation checks remain the same
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showSnackBar("Please fill all fields");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackBar("Passwords do not match");
+      return;
+    }
 
     try {
       final user =
@@ -73,10 +40,23 @@ class _SignupScreenState extends State<SignupScreen> {
         _showSnackBar("Signup Successful!");
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            // Pass UID instead of email to ProfileScreen
-            builder: (context) => ProfileScreen(userId: user.uid),
-          ),
+          MaterialPageRoute(builder: (context) => SigninScreen()),
+        );
+      }
+    } catch (e) {
+      _showSnackBar(e.toString());
+    }
+  }
+
+  Future<void> signUpWithGoogle(BuildContext context) async {
+    try {
+      final user = await AuthService().signInWithGoogle();
+
+      if (user != null) {
+        _showSnackBar("Signup Successful!");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SigninScreen()),
         );
       }
     } catch (e) {

@@ -33,7 +33,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       // Directly navigate to WelcomeScreen without fade transition
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+    
+    if (_slideOffset >= 100) {
+      // Directly navigate to WelcomeScreen without fade transition
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
       );
+      
     } else {
       setState(() {
         _slideOffset = 0.0; // Reset if slide is incomplete
@@ -56,7 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           children: [
             // FitSync Logo
             const Positioned(
-              left: 125,
+              left: 100,
               top: 120,
               child: Text.rich(
                 TextSpan(
@@ -138,6 +144,61 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           Positioned(
                             bottom:
                                 _slideOffset + 80 + _floatingAnimation.value,
+                            child: const Icon(
+                              Icons.keyboard_arrow_up,
+                              color: Colors.black,
+                              size: 50,
+                            ),
+              child: GestureDetector(
+                onVerticalDragUpdate: (details) {
+                  final newOffset = (_slideOffset - (details.primaryDelta ?? 0.0))
+                      .clamp(0.0, 200.0);
+                  if (newOffset != _slideOffset) {
+                    setState(() => _slideOffset = newOffset);
+                  }
+                },
+                onVerticalDragEnd: (_) => _onSlideComplete(),
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, -_slideOffset),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Green background container
+                          Container(
+                            width: 100,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7CBA3B),
+                              borderRadius: BorderRadius.circular(60),
+                            ),
+                          ),
+                          // Floating "GO" button
+                          Positioned(
+                            bottom: _slideOffset + _floatingAnimation.value,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'GO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Floating arrow above the "GO" button
+                          Positioned(
+                            bottom: _slideOffset + 80 + _floatingAnimation.value,
                             child: const Icon(
                               Icons.keyboard_arrow_up,
                               color: Colors.black,
