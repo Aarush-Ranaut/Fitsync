@@ -1,9 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitsync_app/widgets/home_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:fitsync_app/welcome_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -19,7 +16,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   double _slideOffset = 0.0;
   late AnimationController _animationController;
   late Animation<double> _floatingAnimation;
-  bool _checkingAuth = true;
   bool _checkingAuth = true;
 
   @override
@@ -46,6 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             MaterialPageRoute(
               builder: (context) => HomeScreen(
                 username: data?['firstName']?.toString() ?? 'User',
+                
               ),
             ),
           );
@@ -75,7 +72,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void _initializeAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 500),
-      duration: const Duration(milliseconds: 500),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -91,7 +87,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
     } else {
       setState(() => _slideOffset = 0.0);
-      setState(() => _slideOffset = 0.0);
     }
   }
 
@@ -106,106 +101,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF0A0B0A),
       body: SafeArea(
-        child: _checkingAuth
-            ? const Center(child: CircularProgressIndicator())
-            : Stack(
-                children: [
-                  const Positioned(
-                    left: 125,
-                    top: 120,
-                    child: Text.rich(
-                      TextSpan(
-                        text: 'Fit',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 50,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: 'Sync',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 50,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF89F336),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: GestureDetector(
-                      onVerticalDragUpdate: (details) {
-                        final newOffset =
-                            (_slideOffset - (details.primaryDelta ?? 0.0))
-                                .clamp(0.0, 200.0);
-                        if (newOffset != _slideOffset) {
-                          setState(() => _slideOffset = newOffset);
-                        }
-                      },
-                      onVerticalDragEnd: (_) => _onSlideComplete(),
-                      child: AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, -_slideOffset),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
-                                  width: 100,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF7CBA3B),
-                                    borderRadius: BorderRadius.circular(60),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom:
-                                      _slideOffset + _floatingAnimation.value,
-                                  child: Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Text(
-                                      'GO',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: _slideOffset +
-                                      80 +
-                                      _floatingAnimation.value,
-                                  child: const Icon(
-                                    Icons.keyboard_arrow_up,
-                                    color: Colors.black,
-                                    size: 50,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
         child: _checkingAuth
             ? const Center(child: CircularProgressIndicator())
             : Stack(
