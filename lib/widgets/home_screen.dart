@@ -21,70 +21,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final ImagePicker _picker = ImagePicker();
 
   @override
-  void initState() {
-    super.initState();
-    _profilePictureUrl = widget.profilePictureUrl;
-    _fetchUserData(); // Fetch user data on initialization
-  }
+  Widget build(BuildContext context) {
+    final FirebaseAuth auth = FirebaseAuth.instance;
 
-  Future<void> _fetchUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (userDoc.exists) {
-        setState(() {
-          _profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
-        });
-      }
-    }
-  }
-
-  Future<void> _openCamera() async {
-    try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-
-      if (photo != null) {
-        // Upload to Firebase Storage
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          Reference storageRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_pictures/${user.uid}.jpg');
-
-          await storageRef.putFile(File(photo.path));
-          String newUrl = await storageRef.getDownloadURL();
-
-          // Update Firestore
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'profilePictureUrl': newUrl});
-
-          // Update local state
-          setState(() {
-            _profilePictureUrl = newUrl;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error taking photo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile picture')),
+    Future<void> signOut() async {
+      await auth.signOut();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => SigninScreen()),
       );
     }
-  }
-
-  void _logout(BuildContext context) {
-    FirebaseAuth.instance.signOut(); // Sign out the user
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => SigninScreen()),
-      (Route<dynamic> route) => false,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
