@@ -5,22 +5,24 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui';
-import 'gender_selection.dart'; // Import the GenderSelectionScreen
+import '../widgets/home_screen.dart'; // Import the HomeScreen
 
-class ProfileScreen extends StatefulWidget {
+class EditProfileScreen extends StatefulWidget {
   final String userId; // Use userId instead of userEmail
 
-  const ProfileScreen({Key? key, required this.userId}) : super(key: key);
-
+  const EditProfileScreen({Key? key, required this.userId}) : super(key: key);
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  _EditProfileScreenState createState() => _EditProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _profilePicture; // For base64 encoded profile picture
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
   DateTime? _birthDate; // To store the selected birth date
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,14 +44,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final data = userDoc.data() as Map<String, dynamic>;
         _firstNameController.text = data['firstName'] ?? '';
         _lastNameController.text = data['lastName'] ?? '';
-        if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
-          setState(() {
-            _profilePicture = data['profileImage'];
-          });
-        }
+        _heightController.text = data['height']?.toString() ?? '';
+        _weightController.text = data['weight']?.toString() ?? '';
         if (data['birthDate'] != null) {
           setState(() {
             _birthDate = DateTime.parse(data['birthDate']);
+            _ageController.text = _calculateAge(_birthDate!).toString();
+          });
+        }
+        if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
+          setState(() {
+            _profilePicture = data['profileImage'];
           });
         }
       }
@@ -58,6 +63,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SnackBar(content: Text("Error fetching data: $e")),
       );
     }
+  }
+
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
   }
 
   Future<void> _pickImage() async {
@@ -82,6 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (pickedDate != null) {
       setState(() {
         _birthDate = pickedDate;
+        _ageController.text = _calculateAge(pickedDate).toString();
       });
     }
   }
@@ -89,17 +105,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveData() async {
     final String firstName = _firstNameController.text.trim();
     final String lastName = _lastNameController.text.trim();
+    final String height = _heightController.text.trim();
+    final String weight = _weightController.text.trim();
+    final String age = _ageController.text.trim();
 
-    if (firstName.isEmpty || lastName.isEmpty) {
+    if (firstName.isEmpty ||
+        lastName.isEmpty ||
+        height.isEmpty ||
+        weight.isEmpty ||
+        age.isEmpty ||
+        _birthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("First name and last name are required")),
-      );
-      return;
-    }
-
-    if (_birthDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select your birth date")),
+        const SnackBar(content: Text("All fields are required")),
       );
       return;
     }
@@ -108,19 +125,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _firestore.collection('users').doc(widget.userId).set({
         'firstName': firstName,
         'lastName': lastName,
+        'height': int.tryParse(height),
+        'weight': int.tryParse(weight),
+        'age': int.tryParse(age),
+        'birthDate': _birthDate!.toIso8601String(), // Save birth date as ISO string
         'profileImage': _profilePicture ?? '',
-        'birthDate':
-            _birthDate!.toIso8601String(), // Save birth date as ISO string
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Data saved successfully")),
       );
 
-      // Redirect to GenderSelectionScreen after saving
-      Navigator.push(
+      // Redirect to HomeScreen after saving
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const GenderSelectionScreen()),
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(username: firstName),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -179,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          "Profile",
+          "Edit Profile",
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -269,6 +290,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: const TextStyle(color: Colors.white),
                 ),
                 const SizedBox(height: 20),
+                TextField(
+                  controller: _heightController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Height (cm)',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white70),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.green),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Weight (kg)',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white70),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.green),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 20),
                 GestureDetector(
                   onTap: _pickBirthDate,
                   child: AbsorbPointer(
@@ -297,6 +354,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Age',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white70),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.green),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
                 ),
                 const SizedBox(height: 40),
                 SizedBox(
