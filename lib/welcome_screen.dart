@@ -31,7 +31,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     ];
 
     // Load all images in the background and return them
-    return images.map((imagePath) => Image.asset(imagePath, fit: BoxFit.cover)).toList();
+    return images
+        .map((imagePath) => Image.asset(imagePath, fit: BoxFit.cover))
+        .toList();
   }
 
   @override
@@ -83,7 +85,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                     // Grid of circular images
                     return GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 15,
                         mainAxisSpacing: 15,

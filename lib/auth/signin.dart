@@ -1,4 +1,4 @@
-import 'package:fitsync_app/widgets/home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'signup.dart';
@@ -15,10 +15,28 @@ class SigninScreen extends StatelessWidget {
         passwordController.text.trim(),
       );
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          String username = userDoc.data()?['username'] ?? user.email ?? '';
+          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                //profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          await AuthService().signOut();
+          _showSnackBar(context, "User data not found. Please sign up.");
+        }
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
@@ -27,12 +45,35 @@ class SigninScreen extends StatelessWidget {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
+      await AuthService().signOutFromGoogle();
       final user = await AuthService().signInWithGoogle();
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          // Get username and profile picture from Firestore
+          String username = userDoc.data()?['username'] ??
+              user.displayName ??
+              user.email ??
+              'User';
+          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                username: username,
+                //profilePictureUrl: profilePictureUrl,
+              ),
+            ),
+          );
+        } else {
+          await AuthService().signOut();
+          _showSnackBar(context, "Account not found. Please sign up.");
+        }
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
@@ -79,16 +120,10 @@ class SigninScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-
-              // Email Text Field
               _buildTextField(emailController, 'Email', false),
               const SizedBox(height: 16),
-
-              // Password Text Field
               _buildTextField(passwordController, 'Password', true),
               const SizedBox(height: 24),
-
-              // Signin Button
               _buildActionButton(
                 context,
                 'Sign in',
@@ -96,8 +131,6 @@ class SigninScreen extends StatelessWidget {
                 backgroundColor: const Color(0xFF5CB85C),
               ),
               const SizedBox(height: 24),
-
-              // Divider Text
               const Text(
                 'OR',
                 style: TextStyle(
@@ -107,8 +140,6 @@ class SigninScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Continue with Google Button
               _buildActionButton(
                 context,
                 'Continue With Google',
@@ -127,11 +158,9 @@ class SigninScreen extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to sign-up screen
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(builder: (context) => const SignupScreen()),
                       );
                     },
                     child: const Text(
@@ -152,7 +181,6 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to build text fields
   Widget _buildTextField(
       TextEditingController controller, String label, bool isPassword) {
     return TextFormField(
@@ -177,7 +205,6 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to build action buttons
   Widget _buildActionButton(
     BuildContext context,
     String text,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,7 +17,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  File? _profileImage;
+  //File? _profileImage;
+  String? _profilePicture; // For base64 encoded profile picture
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -42,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _lastNameController.text = data['lastName'] ?? '';
         if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
           setState(() {
-            _profileImage = File(data['profileImage']);
+            _profilePicture = data['profileImage'];
           });
         }
       }
@@ -53,12 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final XFile? pickedFile = await _picker.pickImage(source: source);
-
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _profileImage = File(pickedFile.path);
+        _profilePicture = base64Encode(bytes);
       });
     }
   }
@@ -78,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _firestore.collection('users').doc(widget.userId).set({
         'firstName': firstName,
         'lastName': lastName,
-        'profileImage': _profileImage?.path ?? '',
+        'profileImage': _profilePicture ?? '',
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,9 +122,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: CircleAvatar(
                 radius: 120,
-                backgroundImage:
-                    _profileImage != null ? FileImage(_profileImage!) : null,
-                child: _profileImage == null
+                backgroundImage: _profilePicture != null
+                    ? MemoryImage(base64Decode(_profilePicture!))
+                    : null,
+                child: _profilePicture == null
                     ? const Icon(
                         Icons.person,
                         size: 120,
@@ -171,10 +174,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: CircleAvatar(
                         radius: 70,
                         backgroundColor: Colors.grey[800],
-                        backgroundImage: _profileImage != null
-                            ? FileImage(_profileImage!)
+                        backgroundImage: _profilePicture != null
+                            ? MemoryImage(base64Decode(_profilePicture!))
                             : null,
-                        child: _profileImage == null
+                        child: _profilePicture == null
                             ? const Icon(
                                 Icons.person,
                                 size: 40,
@@ -187,35 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            builder: (context) => BottomSheet(
-                              onClosing: () {},
-                              builder: (context) => Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    leading: const Icon(Icons.photo),
-                                    title: const Text("Gallery"),
-                                    onTap: () {
-                                      Navigator.of(context).pop();
-                                      _pickImage(ImageSource.gallery);
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.camera),
-                                    title: const Text("Camera"),
-                                    onTap: () {
-                                      Navigator.of(context).pop();
-                                      _pickImage(ImageSource.camera);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: _pickImage,
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: Colors.green,
