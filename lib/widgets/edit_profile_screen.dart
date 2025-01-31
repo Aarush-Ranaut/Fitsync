@@ -24,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   DateTime? _birthDate; // To store the selected birth date
+  String? _selectedGender; // For dropdown gender selection
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -46,6 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _lastNameController.text = data['lastName'] ?? '';
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
+        _selectedGender = data['gender'] ?? ''; // Fetch gender
         if (data['birthDate'] != null) {
           setState(() {
             _birthDate = DateTime.parse(data['birthDate']);
@@ -108,13 +110,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final String height = _heightController.text.trim();
     final String weight = _weightController.text.trim();
     final String age = _ageController.text.trim();
+    final String? gender = _selectedGender; // Get selected gender
 
     if (firstName.isEmpty ||
         lastName.isEmpty ||
         height.isEmpty ||
         weight.isEmpty ||
         age.isEmpty ||
-        _birthDate == null) {
+        _birthDate == null ||
+        gender == null || // Validate gender
+        gender.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("All fields are required")),
       );
@@ -131,6 +136,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'birthDate':
             _birthDate!.toIso8601String(), // Save birth date as ISO string
         'profileImage': _profilePicture ?? '',
+        'gender': gender, // Save gender
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -353,17 +359,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           : '',
                     ),
                     style: const TextStyle(color: Colors.white),
-                    readOnly: true, // Make the TextField read-only
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-              TextField(
-                controller: _ageController,
-                keyboardType: TextInputType.number,
+              AbsorbPointer(
+                child: TextField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Age',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white70),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.green),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  readOnly: true, // Make the TextField read-only
+                ),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
                 decoration: InputDecoration(
-                  labelText: 'Age',
+                  labelText: 'Gender',
                   labelStyle: const TextStyle(color: Colors.white70),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -374,8 +398,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderSide: const BorderSide(color: Colors.green),
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
-                readOnly: true,
+                dropdownColor:
+                    Colors.grey[900], // Background color of the dropdown menu
+                style: const TextStyle(
+                    color: Colors.white), // Text color of the selected item
+                items: <String>['Male', 'Female', 'Other'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                          color: Colors.white), // Text color of dropdown items
+                    ),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedGender = newValue;
+                  });
+                },
               ),
               const SizedBox(height: 40),
               SizedBox(
