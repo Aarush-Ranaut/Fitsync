@@ -23,14 +23,14 @@ class SigninScreen extends StatelessWidget {
 
         if (userDoc.exists) {
           String username = userDoc.data()?['username'] ?? user.email ?? '';
-          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => HomeScreen(
                 username: username,
-                profilePictureUrl: profilePictureUrl,
+                //profilePictureUrl: profilePictureUrl,
               ),
             ),
           );
@@ -65,14 +65,14 @@ class SigninScreen extends StatelessWidget {
               user.displayName ??
               user.email ??
               'User';
-          String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
+          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => HomeScreen(
                 username: username,
-                profilePictureUrl: profilePictureUrl,
+                //profilePictureUrl: profilePictureUrl,
               ),
             ),
           );

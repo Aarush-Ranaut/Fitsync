@@ -40,15 +40,15 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
 
         // Fetch user's first name and profile picture URL for redirection
         String firstName = '';
-        String profilePictureUrl = '';
+        //String profilePictureUrl = '';
         final userSnapshot =
             await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
         if (userSnapshot.exists) {
           final userData = userSnapshot.data() as Map<String, dynamic>;
           firstName = userData['firstName'] ?? 'User';
-          profilePictureUrl =
-              userData['profileImage'] ?? ''; // Handle default image or empty
+          // profilePictureUrl =
+          //     userData['profileImage'] ?? ''; // Handle default image or empty
         }
 
         // Redirect to HomeScreen with the fetched user data
@@ -57,7 +57,7 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
           MaterialPageRoute(
             builder: (context) => HomeScreen(
               username: firstName,
-              profilePictureUrl: profilePictureUrl,
+              //profilePictureUrl: profilePictureUrl,
             ),
           ),
         );
