@@ -17,11 +17,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  //File? _profileImage;
   String? _profilePicture; // For base64 encoded profile picture
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+  DateTime? _birthDate; // To store the selected birth date
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -47,6 +47,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _profilePicture = data['profileImage'];
           });
         }
+        if (data['birthDate'] != null) {
+          setState(() {
+            _birthDate = DateTime.parse(data['birthDate']);
+          });
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,11 +61,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() {
         _profilePicture = base64Encode(bytes);
+      });
+    }
+  }
+
+  Future<void> _pickBirthDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _birthDate = pickedDate;
       });
     }
   }
@@ -76,11 +97,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    if (_birthDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select your birth date")),
+      );
+      return;
+    }
+
     try {
       await _firestore.collection('users').doc(widget.userId).set({
         'firstName': firstName,
         'lastName': lastName,
         'profileImage': _profilePicture ?? '',
+        'birthDate':
+            _birthDate!.toIso8601String(), // Save birth date as ISO string
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -237,6 +267,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: _pickBirthDate,
+                  child: AbsorbPointer(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Birth Date',
+                        labelStyle: const TextStyle(color: Colors.white70),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.white70),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.green),
+                        ),
+                        suffixIcon: const Icon(
+                          Icons.calendar_today,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      controller: TextEditingController(
+                        text: _birthDate != null
+                            ? "${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}"
+                            : '',
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 40),
                 SizedBox(
