@@ -9,7 +9,7 @@ import 'gender_selection.dart'; // Import the GenderSelectionScreen
 class ProfileScreen extends StatefulWidget {
   final String userId; // Use userId instead of userEmail
 
-  const ProfileScreen({Key? key, required this.userId}) : super(key: key);
+  const ProfileScreen({super.key, required this.userId});
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();

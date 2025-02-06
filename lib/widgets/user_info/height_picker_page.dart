@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'weight_picker_page.dart';
 
 class HeightPickerPage extends StatefulWidget {
+  const HeightPickerPage({super.key});
+
   @override
   _HeightPickerPageState createState() => _HeightPickerPageState();
 }
@@ -17,7 +19,8 @@ class _HeightPickerPageState extends State<HeightPickerPage> {
 
     if (uid != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        final userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
         // If the user document exists, check for height and sync
         if (userDoc.exists) {
@@ -72,7 +75,7 @@ class _HeightPickerPageState extends State<HeightPickerPage> {
                 ),
               ),
               const SizedBox(height: 40),
-              Container(
+              SizedBox(
                 height: 200,
                 child: ListWheelScrollView.useDelegate(
                   itemExtent: 50,

@@ -1,12 +1,24 @@
+import 'package:fitsync_app/auth/auth_service.dart';
 import 'package:fitsync_app/widgets/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'auth_service.dart';
-import 'signup.dart';
-import '../widgets/home_screen.dart'; // Import the HomeScreen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class SigninScreen extends StatelessWidget {
+class SigninScreen extends StatefulWidget {
+  const SigninScreen({super.key});
+
+  @override
+  _SigninScreenState createState() => _SigninScreenState();
+}
+
+class _SigninScreenState extends State<SigninScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
 
   Future<void> signIn(BuildContext context) async {
     try {
@@ -15,9 +27,21 @@ class SigninScreen extends StatelessWidget {
         passwordController.text.trim(),
       );
       if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final username = userDoc['username'] ?? 'User';
+        final profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              username: username,
+              profilePictureUrl: profilePictureUrl,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -29,9 +53,21 @@ class SigninScreen extends StatelessWidget {
     try {
       final user = await AuthService().signInWithGoogle();
       if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final username = userDoc['username'] ?? 'User';
+        final profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              username: username,
+              profilePictureUrl: profilePictureUrl,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -39,29 +75,22 @@ class SigninScreen extends StatelessWidget {
     }
   }
 
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Signup Text
+              // Signin Header Text
               RichText(
                 text: const TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Signup',
+                      text: 'Sign in',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -92,7 +121,7 @@ class SigninScreen extends StatelessWidget {
               // Signin Button
               _buildActionButton(
                 context,
-                'Sign in',
+                'Sign In',
                 () => signIn(context),
                 backgroundColor: const Color(0xFF5CB85C),
               ),
@@ -109,10 +138,10 @@ class SigninScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Continue with Google Button
+              // Sign In with Google Button
               _buildActionButton(
                 context,
-                'Continue With Google',
+                'Sign In with Google',
                 () => signInWithGoogle(context),
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
@@ -120,25 +149,20 @@ class SigninScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
 
-              // Already a user? Sign in
+              // New user? Sign up
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Already a user? ",
+                    "New here? ",
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   GestureDetector(
                     onTap: () {
                       // Navigate to sign-up screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignupScreen()),
-                      );
                     },
                     child: const Text(
-                      "Sign in",
+                      "Sign up",
                       style: TextStyle(
                         color: Color(0xFF5CB85C),
                         fontSize: 16,
@@ -155,7 +179,6 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to build text fields
   Widget _buildTextField(
       TextEditingController controller, String label, bool isPassword) {
     return TextFormField(
@@ -180,7 +203,6 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to build action buttons
   Widget _buildActionButton(
     BuildContext context,
     String text,
