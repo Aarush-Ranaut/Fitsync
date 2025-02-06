@@ -147,7 +147,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(username: firstName),
+          builder: (context) => HomeScreen(),
         ),
       );
     } catch (e) {

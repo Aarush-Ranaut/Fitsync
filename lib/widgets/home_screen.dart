@@ -7,9 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile_screen.dart'; // Import the EditProfileScreen
 
 class HomeScreen extends StatefulWidget {
-  final String? username;
-
-  const HomeScreen({Key? key, this.username}) : super(key: key);
+  const HomeScreen({Key? key})
+      : super(key: key); // ✅ Removed username parameter
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -17,11 +16,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _profilePictureBase64;
+  String _firstName = ""; // ✅ Store first name in state
 
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    _fetchUserData(); // ✅ Load first name when screen starts
   }
 
   Future<void> _fetchUserData() async {
@@ -34,7 +34,11 @@ class _HomeScreenState extends State<HomeScreen> {
             .get();
 
         if (userDoc.exists) {
+          String fullName = userDoc['firstName'] ?? 'Guest'; // Get full name
+          String firstName = fullName.split(' ')[0]; // Extract first name
+
           setState(() {
+            _firstName = firstName; // ✅ Store first name in state variable
             _profilePictureBase64 = userDoc['profileImage'] ?? '';
           });
         }
@@ -96,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  widget.username ?? 'Guest',
+                  _firstName,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -166,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                '${widget.username ?? 'Loading...'}',
+                _firstName,
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 22,

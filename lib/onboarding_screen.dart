@@ -40,10 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                username: data?['firstName']?.toString() ?? 'User',
-                
-              ),
+              builder: (context) => HomeScreen(),
             ),
           );
         } else {
