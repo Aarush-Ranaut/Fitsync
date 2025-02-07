@@ -1,16 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+
 import 'dart:ui';
 import '../widgets/home_screen.dart'; // Import the HomeScreen
 
 class EditProfileScreen extends StatefulWidget {
   final String userId; // Use userId instead of userEmail
 
-  const EditProfileScreen({Key? key, required this.userId}) : super(key: key);
+  const EditProfileScreen({super.key, required this.userId});
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }

@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile_screen.dart'; // Import the EditProfileScreen
+import '../widgets/ai_integration.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? username;
 
-  const HomeScreen({Key? key, this.username}) : super(key: key);
+  const HomeScreen({super.key, this.username});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -166,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                '${widget.username ?? 'Loading...'}',
+                widget.username ?? 'Loading...',
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 22,
@@ -337,9 +338,15 @@ class _HomeScreenState extends State<HomeScreen> {
               Align(
                 alignment: Alignment.bottomRight,
                 child: FloatingActionButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Navigate to the AIIntegration screen when the button is pressed
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AIIntegration(apiKey: 'AIzaSyB1FflSFQMelsT-Ra27xsPLAlBjfsW7uLU',)),
+                    );
+                  },
                   backgroundColor: Colors.green,
-                  child: Icon(Icons.camera_alt, color: Colors.black),
+                  child: Icon(Icons.smart_toy, color: Colors.black),
                 ),
               ),
             ],

@@ -8,6 +8,8 @@ import '../widgets/home_screen.dart';
     final TextEditingController emailController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
 
+  SigninScreen({super.key});
+
   Future<void> signIn(BuildContext context) async {
     try {
       final user = await AuthService().loginUserWithEmailAndPassword(
