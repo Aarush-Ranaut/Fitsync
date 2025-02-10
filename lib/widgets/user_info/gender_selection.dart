@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'height_picker_page.dart';
 
 class GenderSelectionScreen extends StatefulWidget {
-  const GenderSelectionScreen({Key? key}) : super(key: key);
+  const GenderSelectionScreen({super.key});
 
   @override
   _GenderSelectionScreenState createState() => _GenderSelectionScreenState();

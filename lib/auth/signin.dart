@@ -8,6 +8,8 @@ class SigninScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  SigninScreen({super.key});
+
   Future<void> signIn(BuildContext context) async {
     try {
       final user = await AuthService().loginUserWithEmailAndPassword(
@@ -127,10 +129,7 @@ class SigninScreen extends StatelessWidget {
 
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Color(0xFF5CB85C),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 
