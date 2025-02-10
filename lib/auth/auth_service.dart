@@ -64,8 +64,7 @@ class AuthService {
   Future<void> signOutFromFirebase() async {
     try {
       await _auth.signOut();
-    }
-    catch (e) {
+    } catch (e) {
       throw Exception("Error signing out from Google: ${e.toString()}");
     }
   }
@@ -86,6 +85,15 @@ class AuthService {
       await signOutFromFirebase(); // Firebase sign-out
     } catch (e) {
       throw Exception("Error during sign-out: ${e.toString()}");
+    }
+  }
+
+  // Reset password
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      throw Exception("Error sending password reset email: ${e.toString()}");
     }
   }
 }

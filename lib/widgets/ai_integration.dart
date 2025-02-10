@@ -48,10 +48,8 @@ class _AIIntegrationState extends State<AIIntegration> {
   @override
   void initState() {
     super.initState();
-    _loadPreviousMessages().then((_) async {
-      await _fetchUserData();
-      _initializeChat();
-    });
+    _initializeChat(); // Initialize chat first
+    _loadPreviousMessages().then((_) => _fetchUserData());
   }
 
   void _initializeChat() {
@@ -143,10 +141,7 @@ class _AIIntegrationState extends State<AIIntegration> {
     if (userMessage.isEmpty) return;
 
     setState(() {
-      _messages.add({
-        "sender": "User",
-        "message": "$userMessage"
-      });
+      _messages.add({"sender": "User", "message": "$userMessage"});
       _loading = true;
     });
 
@@ -395,7 +390,8 @@ class _AIIntegrationState extends State<AIIntegration> {
                       ? const CircularProgressIndicator()
                       : IconButton(
                           onPressed: _sendMessage,
-                          icon: const Icon(Icons.send, color: Color.fromARGB(255, 119, 207, 19)),
+                          icon: const Icon(Icons.send,
+                              color: Color.fromARGB(255, 119, 207, 19)),
                         ),
                 ],
               ),
@@ -406,4 +402,3 @@ class _AIIntegrationState extends State<AIIntegration> {
     );
   }
 }
-

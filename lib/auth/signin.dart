@@ -24,15 +24,10 @@ import '../widgets/home_screen.dart';
 
         if (userDoc.exists) {
           String username = userDoc.data()?['username'] ?? user.email ?? '';
-          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
-
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                username: username,
-                //profilePictureUrl: profilePictureUrl,
-              ),
+              builder: (context) => HomeScreen(),
             ),
           );
         } else {
@@ -56,20 +51,14 @@ import '../widgets/home_screen.dart';
             .get();
 
         if (userDoc.exists) {
-          // Get username and profile picture from Firestore
           String username = userDoc.data()?['username'] ??
               user.displayName ??
               user.email ??
               'User';
-          //String profilePictureUrl = userDoc.data()?['profilePictureUrl'] ?? '';
-
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                username: username,
-                //profilePictureUrl: profilePictureUrl,
-              ),
+              builder: (context) => HomeScreen(),
             ),
           );
         } else {
@@ -82,11 +71,70 @@ import '../widgets/home_screen.dart';
     }
   }
 
-    void _showSnackBar(BuildContext context, String message) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
+  Future<void> resetPassword(BuildContext context) async {
+    String? email = emailController.text.trim();
+    final TextEditingController emailResetController =
+        TextEditingController(text: email);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.black,
+        content: TextField(
+          controller: emailResetController,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Email',
+            labelStyle: const TextStyle(color: Colors.grey),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF5CB85C)),
+            ),
+          ),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await AuthService()
+                    .sendPasswordResetEmail(emailResetController.text.trim());
+                Navigator.pop(context);
+                _showSnackBar(
+                    context, 'Password reset email sent. Check your inbox.');
+              } catch (e) {
+                Navigator.pop(context);
+                _showSnackBar(context, 'Error: ${e.toString()}');
+              }
+            },
+            child: const Text(
+              'Send',
+              style: TextStyle(color: Color(0xFF5CB85C)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Color(0xFF5CB85C),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +180,18 @@ import '../widgets/home_screen.dart';
                 () => signIn(context),
                 backgroundColor: const Color(0xFF5CB85C),
               ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => resetPassword(context),
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: Color(0xFF5CB85C),
+                    fontSize: 16,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               const Text(
                 'OR',
@@ -162,7 +222,8 @@ import '../widgets/home_screen.dart';
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const SignupScreen()),
                       );
                     },
                     child: const Text(

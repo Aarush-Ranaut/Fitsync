@@ -57,10 +57,7 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              username: firstName,
-              //profilePictureUrl: profilePictureUrl,
-            ),
+            builder: (context) => HomeScreen(),
           ),
         );
       } catch (e) {
