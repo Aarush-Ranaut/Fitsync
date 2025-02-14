@@ -46,12 +46,13 @@ dependencies:
   cloud_firestore: ^5.6.2
   firebase_storage: ^12.4.1
   tflite_flutter: ^0.9.5
-  tflite_flutter_helper: ^0.2.1
+  tflite_flutter_helper: 0.2.1
   camera: ^0.10.5+4
   google_mlkit_pose_detection: ^0.10.0
   flutter_gemini: ^2.0.5
   google_generative_ai: ^0.4.6
   firebase_crashlytics: ^4.3.2
+  image: ^3.3.0
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
     - assets/images/fitness4.jpg
     - assets/images/fitness5.jpg
     - assets/images/fitness6.jpg
+    - assets/4.tflite
 
    #- images/a_dot_ham.jpeg
 
