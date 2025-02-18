@@ -40,17 +40,27 @@ dependencies:
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   google_sign_in: ^6.2.1
+  image_picker: ^0.8.7+5
+  shared_preferences: ^2.1.0
+  flutter_gemini: ^3.0.0  
+  firebase_crashlytics: ^4.3.2 # Update to the latest version
+  intl: ^0.18.1
+  syncfusion_flutter_gauges: ^28.2.5  # Check for the latest version
+
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   cloud_firestore: ^5.6.2
   firebase_storage: ^12.4.1
-  image_picker: ^1.1.2
+  google_generative_ai: ^0.4.6
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -78,6 +88,14 @@ flutter:
     - assets/images/fitness4.jpg
     - assets/images/fitness5.jpg
     - assets/images/fitness6.jpg
+    - assets/images/back_workout.jpg
+    - assets/images/chest_workout.jpg
+    - assets/images/smartwatch.png
+    - assets/images/watch.png
+    - assets/images/home.png
+    - assets/images/profile.png
+    - assets/images/camera.png
+    - assets/images/back.png
 
    #- images/a_dot_ham.jpeg
 

@@ -1,24 +1,12 @@
-import 'package:fitsync_app/auth/auth_service.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'auth_service.dart';
+import 'signup.dart';
+import '../widgets/home_screen.dart';
 
-class SigninScreen extends StatefulWidget {
-  const SigninScreen({super.key});
-
-  @override
-  _SigninScreenState createState() => _SigninScreenState();
-}
-
-class _SigninScreenState extends State<SigninScreen> {
+class SigninScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
 
   Future<void> signIn(BuildContext context) async {
     try {
@@ -27,22 +15,23 @@ class _SigninScreenState extends State<SigninScreen> {
         passwordController.text.trim(),
       );
       if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
-        final username = userDoc['username'] ?? 'User';
-        final profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              username: username,
-              profilePictureUrl: profilePictureUrl,
+        if (userDoc.exists) {
+          String username = userDoc.data()?['username'] ?? user.email ?? '';
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(),
             ),
-          ),
-        );
+          );
+        } else {
+          await AuthService().signOut();
+          _showSnackBar(context, "User data not found. Please sign up.");
+        }
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
@@ -51,41 +40,111 @@ class _SigninScreenState extends State<SigninScreen> {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
+      await AuthService().signOutFromGoogle();
       final user = await AuthService().signInWithGoogle();
       if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
-        final username = userDoc['username'] ?? 'User';
-        final profilePictureUrl = userDoc['profilePictureUrl'] ?? '';
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              username: username,
-              profilePictureUrl: profilePictureUrl,
+        if (userDoc.exists) {
+          String username = userDoc.data()?['username'] ??
+              user.displayName ??
+              user.email ??
+              'User';
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(),
             ),
-          ),
-        );
+          );
+        } else {
+          await AuthService().signOut();
+          _showSnackBar(context, "Account not found. Please sign up.");
+        }
       }
     } catch (e) {
       _showSnackBar(context, e.toString());
     }
   }
 
+  Future<void> resetPassword(BuildContext context) async {
+    String? email = emailController.text.trim();
+    final TextEditingController emailResetController =
+        TextEditingController(text: email);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.black,
+        content: TextField(
+          controller: emailResetController,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Email',
+            labelStyle: const TextStyle(color: Colors.grey),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF5CB85C)),
+            ),
+          ),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await AuthService()
+                    .sendPasswordResetEmail(emailResetController.text.trim());
+                Navigator.pop(context);
+                _showSnackBar(
+                    context, 'Password reset email sent. Check your inbox.');
+              } catch (e) {
+                Navigator.pop(context);
+                _showSnackBar(context, 'Error: ${e.toString()}');
+              }
+            },
+            child: const Text(
+              'Send',
+              style: TextStyle(color: Color(0xFF5CB85C)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Color(0xFF5CB85C),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Signin Header Text
               RichText(
                 text: const TextSpan(
                   children: [
@@ -109,25 +168,29 @@ class _SigninScreenState extends State<SigninScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-
-              // Email Text Field
               _buildTextField(emailController, 'Email', false),
               const SizedBox(height: 16),
-
-              // Password Text Field
               _buildTextField(passwordController, 'Password', true),
               const SizedBox(height: 24),
-
-              // Signin Button
               _buildActionButton(
                 context,
-                'Sign In',
+                'Sign in',
                 () => signIn(context),
                 backgroundColor: const Color(0xFF5CB85C),
               ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => resetPassword(context),
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: Color(0xFF5CB85C),
+                    fontSize: 16,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
-
-              // Divider Text
               const Text(
                 'OR',
                 style: TextStyle(
@@ -137,32 +200,32 @@ class _SigninScreenState extends State<SigninScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Sign In with Google Button
               _buildActionButton(
                 context,
-                'Sign In with Google',
+                'Continue With Google',
                 () => signInWithGoogle(context),
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
                 icon: const Icon(Icons.g_mobiledata, size: 24),
               ),
               const SizedBox(height: 30),
-
-              // New user? Sign up
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "New here? ",
+                    "Don't have an account? ",
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to sign-up screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SignupScreen()),
+                      );
                     },
                     child: const Text(
-                      "Sign up",
+                      "Signup",
                       style: TextStyle(
                         color: Color(0xFF5CB85C),
                         fontSize: 16,

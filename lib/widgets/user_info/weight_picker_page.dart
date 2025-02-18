@@ -54,15 +54,16 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
         }
 
         // Redirect to HomeScreen with the fetched user data
-        Navigator.pushReplacement(
-          context,
+       Navigator.pushReplacement(
+        context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              username: firstName,
-              profilePictureUrl: profilePictureUrl,
+           builder: (context) => HomeScreen(
+            username: firstName,
+           profilePictureUrl: profilePictureUrl,
             ),
-          ),
-        );
+           ),
+          );
+
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error syncing weight data: $e")),
