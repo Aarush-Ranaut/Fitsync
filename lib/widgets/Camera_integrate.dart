@@ -1,578 +1,216 @@
-// import 'dart:typed_data';
-// import 'package:camera/camera.dart';
-// import 'package:flutter/material.dart';
-// import 'package:tflite_flutter/tflite_flutter.dart';
-// import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
-// import 'package:image/image.dart' as img;
-
-// class PoseDetectionScreen extends StatefulWidget {
-//   @override
-//   _PoseDetectionScreenState createState() => _PoseDetectionScreenState();
-// }
-
-// class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
-//   Interpreter? _interpreter;
-//   CameraController? _cameraController;
-//   bool _isDetecting = false;
-//   bool _isModelLoaded = false;
-//   List<List<double>> _keypoints = [];
-//   bool _poseDetected = false;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadModel();
-//     _initializeCamera();
-//   }
-
-//   Future<void> _loadModel() async {
-//     try {
-//       // Load the TensorFlow Lite model
-//       final options = InterpreterOptions()..threads = 4; // Multi-threading
-//       _interpreter = await Interpreter.fromAsset('4.tflite', options: options);
-
-//       // Retrieve the input tensor
-//       final inputTensor = _interpreter!.getInputTensor(0);
-
-//       // Print input tensor details
-//       print("✅ Model successfully loaded!");
-//       print("📏 Input Shape: ${inputTensor.shape}");
-//       print("📏 Input Type: ${inputTensor.type}");
-
-//       // Check the input tensor's data type
-//       if (inputTensor.type == TfLiteType.uint8) {
-//         print("🔍 Input type is Uint8");
-//       } else if (inputTensor.type == TfLiteType.float32) {
-//         print("🔍 Input type is Float32");
-//       } else {
-//         print("⚠️ Unsupported input type: ${inputTensor.type}");
-//       }
-
-//       // Update the UI to indicate the model is loaded
-//       setState(() => _isModelLoaded = true);
-//     } catch (e) {
-//       print("❌ Failed to load model: $e");
-//     }
-//   }
-
-//   Future<void> _initializeCamera() async {
-//     try {
-//       final cameras = await availableCameras();
-//       if (cameras.isEmpty) {
-//         print("🚨 No cameras found");
-//         return;
-//       }
-
-//       await _cameraController?.dispose();
-//       _cameraController = CameraController(
-//         cameras[0],
-//         ResolutionPreset.medium,
-//         imageFormatGroup: ImageFormatGroup.yuv420,
-//       );
-
-//       await _cameraController?.initialize();
-//       if (!mounted) return;
-
-//       print("📷 Camera initialized successfully");
-//       print(
-//           "📸 Camera Image Format: ${_cameraController!.description.sensorOrientation}, "
-//           "ImageFormatGroup: ${_cameraController!.value.previewSize}");
-
-//       _cameraController?.startImageStream((image) {
-//         if (_isModelLoaded && _interpreter != null && !_isDetecting) {
-//           _isDetecting = true;
-//           _processFrame(image).then((_) => _isDetecting = false);
-//         }
-//       });
-
-//       setState(() {});
-//     } catch (e) {
-//       print("❌ Failed to initialize camera: $e");
-//     }
-//   }
-
-//   Future<void> _processFrame(CameraImage image) async {
-//     try {
-//       if (_interpreter == null) {
-//         print("⚠️ Model is not initialized yet");
-//         return;
-//       }
-
-//       // Convert the camera image to a flat Uint8List (with 256x256x3 values)
-//       final Uint8List input = _convertImage(image);
-
-//       // Create a TensorBuffer with the correct shape [1, 256, 256, 3] and type uint8.
-//       TensorBuffer inputBuffer =
-//           TensorBuffer.createFixedSize([1, 256, 256, 3], TfLiteType.uint8);
-//       inputBuffer.loadList(input.toList(), shape: [1, 256, 256, 3]);
-
-//       // Create the output container matching the expected output shape: [1, 1, 17, 3].
-//       // This creates a 4D nested list: 1 batch, 1 extra dimension, 17 keypoints, each with 3 values.
-//       final output = List.generate(
-//         1,
-//         (_) => List.generate(
-//           1,
-//           (_) => List.generate(
-//             17,
-//             (_) => List.filled(3, 0.0),
-//           ),
-//         ),
-//       );
-
-//       // Run inference with the properly shaped input and output.
-//       _interpreter!.run(inputBuffer.buffer, output);
-
-//       // Parse keypoints from the output.
-//       final keypoints = _parseKeypoints(output);
-//       bool detected = _checkPoseDetected(keypoints);
-
-//       setState(() {
-//         _keypoints = keypoints;
-//         _poseDetected = detected;
-//       });
-
-//       print("✅ Keypoints: $_keypoints");
-//       print("🎯 Pose Detected: $_poseDetected");
-//     } catch (e) {
-//       print("📏 Model Input Type: ${_interpreter!.getInputTensor(0).type}");
-//       print("❌ Processing error: $e");
-//     }
-//   }
-
-//   Uint8List _convertImage(CameraImage image) {
-//     final int width = image.width;
-//     final int height = image.height;
-
-//     // Convert YUV420 to RGB using image package
-//     final img.Image convertedImage = img.Image(width, height);
-//     final yBuffer = image.planes[0].bytes;
-//     final uBuffer = image.planes[1].bytes;
-//     final vBuffer = image.planes[2].bytes;
-
-//     for (int i = 0; i < height; i++) {
-//       for (int j = 0; j < width; j++) {
-//         int y = yBuffer[i * width + j];
-//         int u = uBuffer[(i ~/ 2) * (width ~/ 2) + (j ~/ 2)];
-//         int v = vBuffer[(i ~/ 2) * (width ~/ 2) + (j ~/ 2)];
-
-//         int r = (y + (1.402 * (v - 128))).toInt();
-//         int g = (y - (0.344136 * (u - 128)) - (0.714136 * (v - 128))).toInt();
-//         int b = (y + (1.772 * (u - 128))).toInt();
-
-//         r = r.clamp(0, 255);
-//         g = g.clamp(0, 255);
-//         b = b.clamp(0, 255);
-
-//         convertedImage.setPixel(j, i, img.getColor(r, g, b));
-//       }
-//     }
-
-//     // Resize to match model input (256x256)
-//     final resized = img.copyResize(convertedImage, width: 256, height: 256);
-
-//     // Convert to Uint8List for model
-//     final input = Uint8List(256 * 256 * 3);
-
-//     int index = 0;
-//     for (int y = 0; y < resized.height; y++) {
-//       for (int x = 0; x < resized.width; x++) {
-//         final pixel = resized.getPixel(x, y);
-//         input[index++] = img.getRed(pixel); // Red
-//         input[index++] = img.getGreen(pixel); // Green
-//         input[index++] = img.getBlue(pixel); // Blue
-//       }
-//     }
-
-//     print("📸 Converted Image Shape: [1, 256, 256, 3]");
-//     print("🔍 Sample Input Data (First 10 values): ${input.sublist(0, 10)}");
-
-//     return input;
-//   }
-
-//   /// Update the parser to work with an output shape of [1, 1, 17, 3].
-//   List<List<double>> _parseKeypoints(List<dynamic> output) {
-//     List<List<double>> keypoints = [];
-//     // output[0][0] is a List of 17 keypoints, each is a List of 3 doubles.
-//     final keypointList = output[0][0];
-//     for (int i = 0; i < keypointList.length; i++) {
-//       keypoints.add([
-//         keypointList[i][0], // x-coordinate
-//         keypointList[i][1], // y-coordinate
-//         keypointList[i][2] // confidence score
-//       ]);
-//     }
-//     return keypoints;
-//   }
-
-//   bool _checkPoseDetected(List<List<double>> keypoints) {
-//     int count = keypoints.where((k) => k[2] > 0.2).length;
-//     return count >= 3;
-//   }
-
-//   @override
-//   void dispose() {
-//     _cameraController?.dispose();
-//     _interpreter?.close();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text("Pose Detection")),
-//       body: _cameraController == null
-//           ? const Center(child: CircularProgressIndicator())
-//           : Stack(
-//               children: [
-//                 CameraPreview(_cameraController!),
-//                 CustomPaint(
-//                   painter: KeypointPainter(_keypoints),
-//                   child: Container(),
-//                 ),
-//                 if (_poseDetected)
-//                   Positioned(
-//                     top: 50,
-//                     left: 0,
-//                     right: 0,
-//                     child: Center(
-//                       child: Container(
-//                         padding:
-//                             EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-//                         decoration: BoxDecoration(
-//                           color: Colors.green.withOpacity(0.8),
-//                           borderRadius: BorderRadius.circular(10),
-//                         ),
-//                         child: Text(
-//                           "Pose Detected!",
-//                           style: TextStyle(
-//                               fontSize: 24,
-//                               fontWeight: FontWeight.bold,
-//                               color: Colors.white),
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//               ],
-//             ),
-//     );
-//   }
-// }
-
-// class KeypointPainter extends CustomPainter {
-//   final List<List<double>> keypoints;
-
-//   KeypointPainter(this.keypoints);
-
-//   @override
-//   void paint(Canvas canvas, Size size) {
-//     final paint = Paint()
-//       ..color = Colors.green
-//       ..strokeWidth = 4.0
-//       ..style = PaintingStyle.fill;
-
-//     for (var keypoint in keypoints) {
-//       final x = keypoint[0] * size.width;
-//       final y = keypoint[1] * size.height;
-//       if (keypoint[2] > 0.2) {
-//         canvas.drawCircle(Offset(x, y), 5.0, paint);
-//       }
-//     }
-//   }
-
-//   @override
-//   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-// }
-
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
-import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
-import 'package:image/image.dart' as img;
+import 'package:camera/camera.dart';
+import 'package:http/http.dart' as http;
 
-class PoseDetectionScreen extends StatefulWidget {
+class PoseScreen extends StatefulWidget {
   @override
-  _PoseDetectionScreenState createState() => _PoseDetectionScreenState();
+  _PoseScreenState createState() => _PoseScreenState();
 }
 
-class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
-  Interpreter? _interpreter;
+class _PoseScreenState extends State<PoseScreen> {
   CameraController? _cameraController;
-  bool _isDetecting = false;
-  bool _isModelLoaded = false;
-  List<List<double>> _keypoints = [];
-  bool _poseDetected = false;
+  List<CameraDescription>? cameras;
+  bool isProcessing = false;
+  String apiResponse = "Waiting for pose analysis...";
+  bool isCameraEnabled = true;
 
-  // Throttle processing: Only process one frame every 200ms.
-  DateTime _lastInferenceTime = DateTime.now();
+  // Capture frame every 2 seconds
+  final int captureInterval = 1;
+  Timer? captureTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadModel();
     _initializeCamera();
   }
 
-  Future<void> _loadModel() async {
-    try {
-      // Load the TensorFlow Lite model with multi-threading enabled.
-      final options = InterpreterOptions()..threads = 4;
-      _interpreter = await Interpreter.fromAsset('4.tflite', options: options);
-
-      // Retrieve the input tensor details.
-      final inputTensor = _interpreter!.getInputTensor(0);
-      print("✅ Model successfully loaded!");
-      print("📏 Input Shape: ${inputTensor.shape}");
-      print("📏 Input Type: ${inputTensor.type}");
-
-      if (inputTensor.type == TfLiteType.uint8) {
-        print("🔍 Input type is Uint8");
-      } else if (inputTensor.type == TfLiteType.float32) {
-        print("🔍 Input type is Float32");
-      } else {
-        print("⚠️ Unsupported input type: ${inputTensor.type}");
-      }
-
-      setState(() => _isModelLoaded = true);
-    } catch (e) {
-      print("❌ Failed to load model: $e");
-    }
-  }
-
+  // Initialize the camera
   Future<void> _initializeCamera() async {
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        print("🚨 No cameras found");
+      cameras = await availableCameras();
+
+      if (cameras != null && cameras!.isNotEmpty) {
+        _cameraController = CameraController(
+          cameras![0],
+          ResolutionPreset.high,
+        );
+
+        await _cameraController!.initialize();
+
+        setState(() {});
+        _startFrameCapture(); // Start frame capture after initialization
+      } else {
+        print("No cameras available");
+      }
+    } catch (e) {
+      print("Error initializing camera: $e");
+    }
+  }
+
+  // Toggles camera on/off
+  void _toggleCamera() {
+    setState(() {
+      isCameraEnabled = !isCameraEnabled;
+    });
+
+    if (!isCameraEnabled) {
+      // Stop the timer and dispose of the camera if camera is off
+      captureTimer?.cancel();
+      _cameraController?.dispose();
+      _cameraController = null;
+    } else {
+      // Re-initialize camera if turned back on
+      _initializeCamera().then((_) {
+        _startFrameCapture(); // Restart frame capture
+      });
+    }
+  }
+
+  // Periodically captures a frame from the camera
+  void _startFrameCapture() {
+    if (captureTimer != null && captureTimer!.isActive) {
+      print("⚠️ Timer already running, skipping...");
+      return;
+    }
+
+    captureTimer =
+        Timer.periodic(Duration(seconds: captureInterval), (timer) async {
+      print("⏳ Capturing frame at ${DateTime.now()}"); // Debugging
+
+      if (!isCameraEnabled ||
+          isProcessing ||
+          _cameraController == null ||
+          !_cameraController!.value.isInitialized) {
         return;
       }
 
-      await _cameraController?.dispose();
-      _cameraController = CameraController(
-        cameras[0],
-        ResolutionPreset.medium,
-        imageFormatGroup: ImageFormatGroup.yuv420,
-      );
+      isProcessing = true;
+      try {
+        XFile imageFile = await _cameraController!.takePicture();
+        Uint8List imageBytes = await imageFile.readAsBytes();
 
-      await _cameraController?.initialize();
-      if (!mounted) return;
+        // Convert image to Base64
+        String base64Image = base64Encode(imageBytes);
 
-      print("📷 Camera initialized successfully");
-      print(
-          "📸 Camera Image Format: ${_cameraController!.description.sensorOrientation}, "
-          "Preview Size: ${_cameraController!.value.previewSize}");
+        // Debugging: Validate Base64 Image Before Sending
+        Uint8List decodedBytes = base64Decode(base64Image);
+        print("🖼 Image Size: ${decodedBytes.length} bytes");
+        print("📝 Base64 First 100 Chars: ${base64Image.substring(0, 100)}");
 
-      // Start image stream with throttled inference.
-      _cameraController?.startImageStream((image) {
-        // Process only if enough time has passed.
-        if (_isModelLoaded && _interpreter != null && !_isDetecting) {
-          final currentTime = DateTime.now();
-          if (currentTime.difference(_lastInferenceTime).inMilliseconds < 200) {
-            return;
-          }
-          _lastInferenceTime = currentTime;
-
-          _isDetecting = true;
-          _processFrame(image).then((_) => _isDetecting = false);
+        if (decodedBytes.isEmpty) {
+          print("❌ Error: Decoded Base64 is empty!");
+          isProcessing = false;
+          return;
         }
-      });
 
-      setState(() {});
-    } catch (e) {
-      print("❌ Failed to initialize camera: $e");
-    }
+        print("✅ Image Captured & Encoded Successfully!");
+        await _sendToApi(base64Image);
+        print("📡 SENT TO API");
+      } catch (e) {
+        print("❌ Error capturing frame: $e");
+      } finally {
+        isProcessing = false;
+      }
+    });
   }
 
-  Future<void> _processFrame(CameraImage image) async {
+  // Sends the captured image to the API
+  Future<void> _sendToApi(String base64Image) async {
+    final url = Uri.parse("http://192.168.0.115:5000/predict");
+
     try {
-      if (_interpreter == null) {
-        print("⚠️ Model is not initialized yet");
-        return;
-      }
+      Map<String, dynamic> requestBody = {"image": base64Image};
+      String jsonBody = jsonEncode(requestBody);
 
-      // Offload image conversion to an isolate.
-      final Uint8List input = await compute(convertImageIsolate, {
-        'width': image.width,
-        'height': image.height,
-        'y': image.planes[0].bytes,
-        'u': image.planes[1].bytes,
-        'v': image.planes[2].bytes,
-      });
+      print(
+          "📤 Request JSON (First 200 chars): ${jsonBody.substring(0, 200)}...");
 
-      // Create a TensorBuffer with shape [1, 256, 256, 3] and type uint8.
-      TensorBuffer inputBuffer =
-          TensorBuffer.createFixedSize([1, 256, 256, 3], TfLiteType.uint8);
-      inputBuffer.loadList(input.toList(), shape: [1, 256, 256, 3]);
-
-      // Prepare output container matching expected shape: [1, 1, 17, 3].
-      final output = List.generate(
-        1,
-        (_) => List.generate(
-          1,
-          (_) => List.generate(
-            17,
-            (_) => List.filled(3, 0.0),
-          ),
-        ),
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonBody,
       );
 
-      // Run inference.
-      _interpreter!.run(inputBuffer.buffer, output);
+      print("📡 API Response Code: ${response.statusCode}");
+      print("📡 API Response Body: ${response.body}");
 
-      // Parse keypoints.
-      final keypoints = _parseKeypoints(output);
-      bool detected = _checkPoseDetected(keypoints);
-
-      setState(() {
-        _keypoints = keypoints;
-        _poseDetected = detected;
-      });
-
-      print("✅ Keypoints: $_keypoints");
-      print("🎯 Pose Detected: $_poseDetected");
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        setState(() {
+          apiResponse = responseData["prediction"] ?? "No response";
+        });
+      } else {
+        setState(() {
+          apiResponse = "❌ Error: ${response.statusCode}";
+        });
+      }
     } catch (e) {
-      print("📏 Model Input Type: ${_interpreter!.getInputTensor(0).type}");
-      print("❌ Processing error: $e");
+      setState(() {
+        apiResponse = "❌ Failed to connect to API";
+      });
+      print("❌ Failed to send request: $e");
     }
-  }
-
-  /// This function runs in a separate isolate to convert a YUV420 image to a Uint8List in RGB.
-  static Uint8List convertImageIsolate(Map<String, dynamic> params) {
-    final int width = params['width'];
-    final int height = params['height'];
-    final Uint8List yBuffer = params['y'];
-    final Uint8List uBuffer = params['u'];
-    final Uint8List vBuffer = params['v'];
-
-    // Create an image buffer.
-    final img.Image convertedImage = img.Image(width, height);
-    for (int i = 0; i < height; i++) {
-      for (int j = 0; j < width; j++) {
-        int y = yBuffer[i * width + j];
-        int u = uBuffer[(i ~/ 2) * (width ~/ 2) + (j ~/ 2)];
-        int v = vBuffer[(i ~/ 2) * (width ~/ 2) + (j ~/ 2)];
-
-        int r = (y + (1.402 * (v - 128))).toInt();
-        int g = (y - (0.344136 * (u - 128)) - (0.714136 * (v - 128))).toInt();
-        int b = (y + (1.772 * (u - 128))).toInt();
-
-        r = r.clamp(0, 255);
-        g = g.clamp(0, 255);
-        b = b.clamp(0, 255);
-
-        convertedImage.setPixel(j, i, img.getColor(r, g, b));
-      }
-    }
-
-    // Resize the image to 256x256 to match model input.
-    final img.Image resized =
-        img.copyResize(convertedImage, width: 256, height: 256);
-
-    // Convert image pixels to a flat Uint8List (RGB).
-    final Uint8List input = Uint8List(256 * 256 * 3);
-    int index = 0;
-    for (int y = 0; y < resized.height; y++) {
-      for (int x = 0; x < resized.width; x++) {
-        final int pixel = resized.getPixel(x, y);
-        input[index++] = img.getRed(pixel);
-        input[index++] = img.getGreen(pixel);
-        input[index++] = img.getBlue(pixel);
-      }
-    }
-    return input;
-  }
-
-  /// Parse keypoints from an output of shape [1, 1, 17, 3].
-  List<List<double>> _parseKeypoints(List<dynamic> output) {
-    List<List<double>> keypoints = [];
-    final keypointList = output[0][0];
-    for (int i = 0; i < keypointList.length; i++) {
-      keypoints.add([
-        keypointList[i][0].toDouble(),
-        keypointList[i][1].toDouble(),
-        keypointList[i][2].toDouble(),
-      ]);
-    }
-    return keypoints;
-  }
-
-  bool _checkPoseDetected(List<List<double>> keypoints) {
-    int count = keypoints.where((k) => k[2] > 0.2).length;
-    return count >= 3;
   }
 
   @override
   void dispose() {
+    captureTimer?.cancel();
     _cameraController?.dispose();
-    _interpreter?.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pose Detection")),
-      body: _cameraController == null
-          ? const Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                CameraPreview(_cameraController!),
-                CustomPaint(
-                  painter: KeypointPainter(_keypoints),
-                  child: Container(),
-                ),
-                if (_poseDetected)
-                  Positioned(
-                    top: 50,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          "Pose Detected!",
-                          style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
-                        ),
-                      ),
-                    ),
+      appBar: AppBar(
+        title: Text("Pose Detection"),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: isCameraEnabled
+                ? (_cameraController == null ||
+                        !_cameraController!.value.isInitialized
+                    ? Center(child: CircularProgressIndicator())
+                    : RotatedBox(
+                        quarterTurns: 4,
+                        child: CameraPreview(_cameraController!),
+                      ))
+                : Center(child: Text("Camera is Off")),
+          ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: Colors.black,
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  apiResponse,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-              ],
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
+          ),
+          SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: _toggleCamera,
+            child: Text(
+              isCameraEnabled ? "Turn Camera Off" : "Turn Camera On",
+            ),
+          ),
+          SizedBox(height: 10),
+        ],
+      ),
     );
   }
-}
-
-class KeypointPainter extends CustomPainter {
-  final List<List<double>> keypoints;
-
-  KeypointPainter(this.keypoints);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.green
-      ..strokeWidth = 4.0
-      ..style = PaintingStyle.fill;
-
-    for (var keypoint in keypoints) {
-      final x = keypoint[0] * size.width;
-      final y = keypoint[1] * size.height;
-      if (keypoint[2] > 0.2) {
-        canvas.drawCircle(Offset(x, y), 5.0, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

@@ -53,6 +53,8 @@ dependencies:
   google_generative_ai: ^0.4.6
   firebase_crashlytics: ^4.3.2
   image: ^3.3.0
+  path_provider: ^2.1.5
+  http: ^1.3.0
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +87,10 @@ flutter:
     - assets/images/fitness5.jpg
     - assets/images/fitness6.jpg
     - assets/4.tflite
+    - assets/posture_classifier.tflite
+    - assets/pose_image.jpg
+    - assets/standing.jpg
+    - assets/sitting.jpg
 
    #- images/a_dot_ham.jpeg
 

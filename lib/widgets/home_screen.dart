@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
           FloatingActionButton(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => PoseDetectionScreen()),
+              MaterialPageRoute(builder: (context) => PoseScreen()),
             ),
             backgroundColor: Colors.green,
             child: const Icon(Icons.camera_alt, color: Colors.black),
