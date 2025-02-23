@@ -41,7 +41,7 @@ dependencies:
   firebase_auth: ^5.4.1
   google_sign_in: ^6.2.1
   image_picker: ^0.8.7+5
-  shared_preferences: ^2.1.0
+  shared_preferences: ^2.2.2
   flutter_gemini: ^3.0.0  
   firebase_crashlytics: ^4.3.2 # Update to the latest version
   intl: ^0.18.1
@@ -88,14 +88,14 @@ flutter:
     - assets/images/fitness4.jpg
     - assets/images/fitness5.jpg
     - assets/images/fitness6.jpg
-    - assets/images/back_workout.jpg
-    - assets/images/chest_workout.jpg
+    - assets/images/back_workout.png
+    - assets/images/chest_workout.png
     - assets/images/smartwatch.png
     - assets/images/watch.png
     - assets/images/home.png
     - assets/images/profile.png
     - assets/images/camera.png
-    - assets/images/back.png
+    
 
    #- images/a_dot_ham.jpeg
 

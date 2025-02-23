@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:fitsync_app/auth/signin.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,20 +18,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final limeGreenColor = Color(0xFF90FF42);
+  final limeGreenColor = const Color(0xFF90FF42);
 
   static const List<NavigationItemData> _navigationItems = [
-    NavigationItemData(iconPath: 'assets/images/home.png', label: ''),
-    NavigationItemData(iconPath: 'assets/images/camera.png', label: ''),
-    NavigationItemData(iconPath: 'assets/images/watch.png', label: ''),
-    NavigationItemData(iconPath: 'assets/images/profile.png', label: ''),
+    NavigationItemData(iconPath: 'assets/images/home.png', label: 'Home'),
+    NavigationItemData(iconPath: 'assets/images/camera.png', label: 'Camera'),
+    NavigationItemData(iconPath: 'assets/images/watch.png', label: 'Watch'),
+    NavigationItemData(iconPath: 'assets/images/profile.png', label: 'Profile'),
   ];
 
   Future<Map<String, dynamic>> _fetchUserData() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return {"firstName": "Guest", "profileImage": ""};
-    DocumentSnapshot userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
     if (!userDoc.exists) return {"firstName": "Guest", "profileImage": ""};
 
@@ -84,100 +84,100 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGaugeMeter() {
-    return SizedBox(
-      width: 110,
-      height: 110,
-      child: SfRadialGauge(
-        axes: <RadialAxis>[
-          RadialAxis(
-            startAngle: 180,
-            endAngle: 0,
-            minimum: 0,
-            maximum: 100,
-            showLabels: false,
-            showTicks: false,
-            axisLineStyle: AxisLineStyle(
-              thickness: 0.15,
-              thicknessUnit: GaugeSizeUnit.factor,
-              cornerStyle: CornerStyle.bothCurve,
-              gradient: SweepGradient(
-                colors: [Colors.blue, Colors.green],
-                stops: [0.25, 0.75],
-              ),
+  return SizedBox(
+    width: 80,
+    height: 80,
+    child: SfRadialGauge(
+      axes: <RadialAxis>[
+        RadialAxis(
+          startAngle: 180,
+          endAngle: 0,
+          minimum: 0,
+          maximum: 100,
+          showLabels: false,
+          showTicks: false,
+          axisLineStyle: AxisLineStyle(
+            thickness: 0.12,
+            thicknessUnit: GaugeSizeUnit.factor,
+            cornerStyle: CornerStyle.bothCurve,
+            gradient: const SweepGradient(
+              colors: [Colors.blue, Colors.green],
+              stops: [0.25, 0.75],
             ),
-            pointers: <GaugePointer>[
-              NeedlePointer(
-                value: 75,
-                needleLength: 0.8,
-                lengthUnit: GaugeSizeUnit.factor,
-                needleColor: Colors.redAccent,
-                needleEndWidth: 5,
-                knobStyle: KnobStyle(
-                  color: Colors.white,
-                  borderColor: Colors.redAccent,
-                  borderWidth: 3,
-                  sizeUnit: GaugeSizeUnit.factor,
-                  knobRadius: 0.07,
-                ),
-                enableAnimation: true,
-                animationType: AnimationType.ease,
-                animationDuration: 1500,
-              ),
-            ],
-            annotations: <GaugeAnnotation>[
-              GaugeAnnotation(
-                widget: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '75%',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Progress',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
-                ),
-                angle: 90,
-                positionFactor: 0.0,
-              ),
-            ],
           ),
-        ],
-      ),
-    );
-  }
+          pointers: <GaugePointer>[
+            NeedlePointer(
+              value: 75,
+              needleLength: 0.7,
+              lengthUnit: GaugeSizeUnit.factor,
+              needleColor: Colors.redAccent,
+              needleEndWidth: 4,
+              knobStyle: const KnobStyle(
+                color: Colors.white,
+                borderColor: Colors.redAccent,
+                borderWidth: 2,
+                sizeUnit: GaugeSizeUnit.factor,
+                knobRadius: 0.06,
+              ),
+              enableAnimation: true,
+              animationType: AnimationType.ease,
+              animationDuration: 1200,
+            ),
+          ],
+          annotations: <GaugeAnnotation>[
+            GaugeAnnotation(
+              widget: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '75%',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'Progress',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+              angle: 90,
+              positionFactor: 0.0,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
-  Widget _buildHealthCard() {
+Widget _buildHealthCard() {
   return Container(
-    padding: EdgeInsets.all(20),
+    padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [Colors.grey[800]!, Colors.grey[900]!],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      borderRadius: BorderRadius.circular(25),
+      borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.6),
-          blurRadius: 15,
-          spreadRadius: 2,
-          offset: Offset(0, 8),
+          color: Colors.black.withOpacity(0.5),
+          blurRadius: 10,
+          spreadRadius: 1,
+          offset: const Offset(0, 6),
         ),
         BoxShadow(
-          color: limeGreenColor.withOpacity(0.2),
-          blurRadius: 25,
-          spreadRadius: 2,
-          offset: Offset(0, 0), // Glowing effect
+          color: limeGreenColor.withOpacity(0.15),
+          blurRadius: 20,
+          spreadRadius: 1,
+          offset: const Offset(0, 0),
         ),
       ],
     ),
@@ -185,21 +185,17 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         AnimatedContainer(
-          duration: Duration(milliseconds: 800),
+          duration: const Duration(milliseconds: 700),
           curve: Curves.easeInOut,
           child: _buildGaugeMeter(),
         ),
-        SizedBox(width: 20),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildHealthInfo(Icons.favorite, 'BPM', '72'),
-              Divider(color: Colors.white24, thickness: 0.5),
-              _buildHealthInfo(Icons.directions_walk, 'Steps', '8,546'),
-              Divider(color: Colors.white24, thickness: 0.5),
-              _buildHealthInfo(Icons.monitor_weight, 'BMI', '22.5'),
             ],
           ),
         ),
@@ -213,29 +209,29 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
     crossAxisAlignment: CrossAxisAlignment.center,
     children: [
       Container(
-        padding: EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.grey[800],
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: limeGreenColor.withOpacity(0.4),
-              blurRadius: 10,
-              spreadRadius: 2,
+              color: limeGreenColor.withOpacity(0.08),
+              blurRadius: 3,
+              spreadRadius: 1,
             ),
           ],
         ),
-        child: Icon(icon, color: limeGreenColor, size: 24),
+        child: Icon(icon, color: limeGreenColor, size: 20),
       ),
-      SizedBox(width: 12),
+      const SizedBox(width: 6),
       RichText(
         text: TextSpan(
           children: [
             TextSpan(
               text: '$label: ',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'Poppins',
               ),
@@ -244,7 +240,7 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
               text: value,
               style: TextStyle(
                 color: limeGreenColor,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Poppins',
               ),
@@ -260,30 +256,30 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
     List<Map<String, dynamic>> tutorials = [
       {
         "title": "BACK",
-        "image": "assets/images/back_workout.jpg",
-        "color": Color(0xFFCFFF95), // Peach color for back
+        "image": "assets/images/back_workout.png",
+        "color": const Color(0xFFFFE5D9), // Light peach
       },
       {
         "title": "CHEST",
-        "image": "assets/images/chest_workout.jpg",
-        "color": Color(0xFFCFFF95), // Light yellow for chest
+        "image": "assets/images/chest_workout.png",
+        "color": const Color(0xFFFFFFB3), // Light yellow
       },
       {
-        "title": "CHEST",
-        "image": "assets/images/chest_workout.jpg",
-        "color": Color(0xFFCFFF95), // Light green for next card
+        "title": "LEGS",
+        "image": "assets/images/legs_workout.jpg",
+        "color": const Color(0xFFCFFF95), // Light green
       },
       {
-        "title": "CHEST",
-        "image": "assets/images/chest_workout.jpg",
-        "color": Color(0xFFCFFF95), // Light green for last card
+        "title": "ARMS",
+        "image": "assets/images/arms_workout.jpg",
+        "color": const Color(0xFFD0A9F5), // Light purple
       },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           "Tutorials",
           style: TextStyle(
             color: Colors.white,
@@ -291,7 +287,7 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SizedBox(
           height: 200,
           child: ListView.builder(
@@ -300,19 +296,20 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
             itemBuilder: (context, index) {
               final tutorial = tutorials[index];
               return Container(
-                width: 160,
-                margin: EdgeInsets.only(right: 16),
+                width: 140,
+                margin: const EdgeInsets.only(right: 16),
                 decoration: BoxDecoration(
-                  color: tutorial["color"],
-                  borderRadius: BorderRadius.circular(24),
+                  color: tutorial["color"] as Color,
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Padding(
-                      padding: EdgeInsets.only(top: 16, bottom: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Text(
-                        tutorial["title"]!,
-                        style: TextStyle(
+                        tutorial["title"] as String,
+                        style: const TextStyle(
                           color: Colors.black,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -320,18 +317,16 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
                       ),
                     ),
                     Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset(
-                            tutorial["image"]!,
-                            fit: BoxFit.cover,
-                          ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          tutorial["image"] as String,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
                         ),
                       ),
                     ),
-                    SizedBox(height: 16),
                   ],
                 ),
               );
@@ -342,26 +337,30 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          SafeArea(
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.black,
+    body: Stack(
+      children: [
+        // Main scrollable content
+        SafeArea(
+          child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: FutureBuilder<Map<String, dynamic>>(
                 future: _fetchUserData(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator(color: Colors.green));
+                    return const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF90FF42)),
+                    );
                   }
                   if (snapshot.hasError) {
-                    return Center(
+                    return const Center(
                       child: Text(
                         "Error loading data",
-                        style: TextStyle(color: Colors.red, fontSize: 18),
+                        style: TextStyle(color: Colors.red, fontSize: 22),
                       ),
                     );
                   }
@@ -371,115 +370,139 @@ Widget _buildHealthInfo(IconData icon, String label, String value) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       Text(
                         intl.DateFormat('MMM dd, yyyy').format(DateTime.now()),
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             firstName,
-                            style: TextStyle(color: Colors.green, fontSize: 22, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: limeGreenColor,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.notifications, color: Colors.green, size: 28),
-                            onPressed: () {
-                              // Handle notification button press
-                              print('Notification button pressed');
-                            },
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[850],
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.notifications_outlined,
+                                color: limeGreenColor,
+                                size: 24,
+                              ),
+                              onPressed: () {
+                                print('Notification button pressed');
+                              },
+                            ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       _buildHealthCard(),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       _buildTutorials(),
+                      const SizedBox(height: 80), // Reduce bottom padding
                     ],
                   );
                 },
               ),
             ),
           ),
-         Positioned(
-  left: 20,
-  right: 20,
-  bottom: 30,
-  child: Container(
-    height: 70,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.grey[900]!.withOpacity(0.85),
-          Colors.grey[800]!.withOpacity(0.85),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(30),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.4),
-          blurRadius: 15,
-          spreadRadius: 2,
-          offset: Offset(0, 8),
         ),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: _navigationItems.map((item) {
-        int index = _navigationItems.indexOf(item);
-        bool isSelected = _selectedIndex == index;
-        
-        return GestureDetector(
-          onTap: () {
-            _onItemTapped(index);
-          },
-          child: AnimatedScale(
-            scale: isSelected ? 1.2 : 1.0,
-            duration: Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  item.iconPath,
-                  color: isSelected ? Colors.greenAccent : Colors.white,
-                  width: 30,
-                  height: 30,
-                ),
-                SizedBox(height: 5),
-                Text(
-                  item.label,
-                  style: TextStyle(
-                    color: isSelected ? Colors.greenAccent : Colors.white70,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
+
+        // Bottom Navigation Bar (Moved Further Down)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 10, // Adjusted for lower positioning
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.grey[900]!.withOpacity(0.85),
+              borderRadius: BorderRadius.circular(35),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
                 ),
               ],
             ),
-          ),
-        );
-      }).toList(),
-    ),
-  ),
-),
-          Positioned(
-            bottom: 120,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: () => _navigateToAIIntegration(context),
-              backgroundColor: Colors.greenAccent,
-              child: Icon(Icons.chat, color: Colors.white),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(_navigationItems.length, (index) {
+                return GestureDetector(
+                  onTap: () => _onItemTapped(index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _selectedIndex == index 
+                          ? limeGreenColor.withOpacity(0.2) 
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          _navigationItems[index].iconPath,
+                          width: 24,
+                          height: 24,
+                          color: _selectedIndex == index ? limeGreenColor : Colors.white70,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _navigationItems[index].label,
+                          style: TextStyle(
+                            color: _selectedIndex == index ? limeGreenColor : Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+
+        // AI Chat Button
+        Positioned(
+          right: 20,
+          bottom: 10,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: limeGreenColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              onPressed: () => _navigateToAIIntegration(context),
+              backgroundColor: limeGreenColor,
+              child: const Icon(Icons.chat, color: Colors.black),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }
 class NavigationItemData {
   final String iconPath;
