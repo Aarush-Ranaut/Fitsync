@@ -6,6 +6,9 @@ import 'package:flutter_gemini/flutter_gemini.dart' as gemini;
 import 'package:google_generative_ai/google_generative_ai.dart' as gpt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'dart:math'; // Add this import at the top of your file
+import 'package:intl/intl.dart';
+import 'dart:convert';
 
 void main() {
   const apiKey =
@@ -48,9 +51,16 @@ class _AIIntegrationState extends State<AIIntegration> {
   @override
   void initState() {
     super.initState();
-    _loadPreviousMessages().then((_) async {
-      await _fetchUserData();
-      _initializeChat();
+    _initializeChat(); // Initialize chat first
+    _loadPreviousMessages().then((_) => _fetchUserData());
+  }
+
+  List<Map<String, String>> chatMessages = []; // Stores messages locally
+  String currentUser = ""; // Set this dynamically after login
+
+  void saveMessage(String message) {
+    setState(() {
+      chatMessages.add({"user": currentUser, "message": message});
     });
   }
 
@@ -261,47 +271,65 @@ class _AIIntegrationState extends State<AIIntegration> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.greenAccent.withOpacity(0.3),
+            spreadRadius: 6,
+            blurRadius: 40,
+            offset: Offset(0, 0), // Centered glow effect
+          ),
+          BoxShadow(
+            color: Colors.blueAccent.withOpacity(0.2), // Extra depth with blue
+            spreadRadius: 4,
+            blurRadius: 25,
+            offset: Offset(0, 0),
+          ),
+        ],
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 1.5,
           colors: [
-            Color.fromARGB(255, 14, 89, 17),
-            Colors.black,
-            Colors.black,
-            Color.fromARGB(255, 14, 89, 17),
+            Color(0xFF152238), // Deep Navy Blue (Elegant & modern)
+            Color(0xFF0B3D2E), // Teal-Green for richness
+            Color(0xFF021C1E), // Dark Cyan-Black (Luxurious feel)
+            Color(0xFF000000), // Pure Black (For contrast & depth)
           ],
-          stops: [0.0, 0.4, 0.75, 1.0],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          stops: [0.1, 0.4, 0.7, 1.0],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(65),
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(25),
-              bottomRight: Radius.circular(25),
+              bottomLeft: Radius.circular(15),
+              bottomRight: Radius.circular(15),
             ),
             child: AppBar(
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.5),
               centerTitle: true,
               title: RichText(
                 text: TextSpan(
                   children: [
-                    TextSpan(
+                    const TextSpan(
                       text: 'Fit',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 30,
+                        fontSize: 28,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    TextSpan(
+                    const TextSpan(
                       text: 'Sync ',
-                      style: const TextStyle(
-                        color: Colors.green,
+                      style: TextStyle(
+                        color: Color(0xFF77CF13), // Green accent
                         fontWeight: FontWeight.bold,
-                        fontSize: 30,
+                        fontSize: 28,
+                        letterSpacing: 1.2,
                       ),
                     ),
                     WidgetSpan(
@@ -310,20 +338,22 @@ class _AIIntegrationState extends State<AIIntegration> {
                       child: ShaderMask(
                         shaderCallback: (bounds) => const LinearGradient(
                           colors: [
-                            Colors.red,
-                            Colors.orange,
-                            Colors.yellow,
-                            Colors.green,
+                            Colors.cyan,
                             Colors.blue,
-                            Colors.deepPurpleAccent,
+                            Colors.purple,
+                            Colors.pink,
+                            Colors.orange,
                           ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ).createShader(bounds),
-                        child: Text(
+                        child: const Text(
                           'AI',
-                          style: const TextStyle(
-                            fontSize: 30,
+                          style: TextStyle(
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ),
@@ -348,56 +378,211 @@ class _AIIntegrationState extends State<AIIntegration> {
         body: Column(
           children: [
             Expanded(
-              child: Container(
-                color: Colors.transparent,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: ListView.builder(
                   controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
                     final message = _messages[index];
-                    final isAI = message["sender"] == "AI";
-                    return _buildMessage(message["message"]!, isAI);
+                    final bool isAI = message["sender"] == "AI";
+                    final DateTime timestamp;
+                    if (message["timestamp"] is String) {
+                      timestamp = DateTime.tryParse(message["timestamp"]!) ??
+                          DateTime.now();
+                    } else if (message["timestamp"] is DateTime) {
+                      timestamp = message["timestamp"] as DateTime;
+                    } else {
+                      timestamp = DateTime.now();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        crossAxisAlignment: isAI
+                            ? CrossAxisAlignment.start
+                            : CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${timestamp.hour}:${timestamp.minute}',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          _buildChatBubble(
+                              context, message["message"]!, isAI, timestamp),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),
             ),
-            Container(
-              color: Colors.transparent,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      autofocus: true,
-                      focusNode: _textFieldFocus,
-                      controller: _userMessageController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Ask any question',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        filled: true,
-                        fillColor: const Color(0xFF2A2A2A),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 20),
-                      ),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+            _buildChatInput(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatBubble(
+      BuildContext context, String message, bool isAI, DateTime dateTime) {
+    return Column(
+      children: [
+        if (_isNewDay(dateTime)) ...[
+          _buildDateHeader(dateTime),
+        ],
+        Align(
+          alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            constraints: BoxConstraints(
+              maxWidth: 0.75 * MediaQuery.of(context).size.width,
+            ),
+            decoration: BoxDecoration(
+              gradient: isAI
+                  ? const LinearGradient(
+                      colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isAI ? null : Colors.grey[850],
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isAI ? 0 : 0),
+                topRight: Radius.circular(isAI ? 20 : 0),
+                bottomLeft: const Radius.circular(20),
+                bottomRight: const Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IntrinsicWidth(
+              child: IntrinsicHeight(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: isAI ? Colors.black87 : Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
                   ),
-                  const SizedBox(width: 8),
-                  _loading
-                      ? const CircularProgressIndicator()
-                      : IconButton(
-                          onPressed: _sendMessage,
-                          icon: const Icon(Icons.send,
-                              color: Color.fromARGB(255, 119, 207, 19)),
-                        ),
-                ],
+                ),
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateHeader(DateTime dateTime) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Center(
+        child: Text(
+          DateFormat('MMMM d, yyyy').format(dateTime),
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  DateTime? _previousDateTime;
+
+  bool _isNewDay(DateTime dateTime) {
+    if (_previousDateTime == null) {
+      _previousDateTime = dateTime;
+      return true;
+    }
+
+    if (dateTime.year != _previousDateTime!.year ||
+        dateTime.month != _previousDateTime!.month ||
+        dateTime.day != _previousDateTime!.day) {
+      _previousDateTime = dateTime;
+      return true;
+    }
+    return false;
+  }
+
+// Chat input with glassmorphism effect
+  Widget _buildChatInput() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                autofocus: true,
+                focusNode: _textFieldFocus,
+                controller: _userMessageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Ask me anything...',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _loading
+                ? const Padding(
+                    padding: EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF77CF13),
+                      strokeWidth: 3,
+                    ),
+                  )
+                : GestureDetector(
+                    onTap: _sendMessage,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      transform:
+                          Matrix4.translationValues(0, _loading ? -3 : 0, 0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF77CF13),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.send, color: Colors.black),
+                      ),
+                    ),
+                  ),
           ],
         ),
       ),
