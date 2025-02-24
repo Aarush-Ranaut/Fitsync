@@ -55,6 +55,9 @@ dependencies:
   image: ^3.3.0
   path_provider: ^2.1.5
   http: ^1.3.0
+  dio: ^5.8.0+1
+  intl: ^0.20.2
+  syncfusion_flutter_gauges: ^28.2.6
 
 dev_dependencies:
   flutter_test:
@@ -86,11 +89,13 @@ flutter:
     - assets/images/fitness4.jpg
     - assets/images/fitness5.jpg
     - assets/images/fitness6.jpg
-    - assets/4.tflite
-    - assets/posture_classifier.tflite
-    - assets/pose_image.jpg
-    - assets/standing.jpg
-    - assets/sitting.jpg
+    - assets/images/back_workout.png
+    - assets/images/chest_workout.png
+    - assets/images/smartwatch.png
+    - assets/images/watch.png
+    - assets/images/home.png
+    - assets/images/profile.png
+    - assets/images/camera.png
 
    #- images/a_dot_ham.jpeg
 
