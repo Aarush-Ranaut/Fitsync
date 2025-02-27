@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'weight_picker_page.dart';
 
 class HeightPickerPage extends StatefulWidget {
+  const HeightPickerPage({super.key});
+
   @override
   _HeightPickerPageState createState() => _HeightPickerPageState();
 }
@@ -72,7 +74,7 @@ class _HeightPickerPageState extends State<HeightPickerPage> {
                 ),
               ),
               const SizedBox(height: 40),
-              Container(
+              SizedBox(
                 height: 200,
                 child: ListWheelScrollView.useDelegate(
                   itemExtent: 50,

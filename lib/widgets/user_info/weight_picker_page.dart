@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../home_screen.dart';
 
 class WeightPickerPage extends StatefulWidget {
+  const WeightPickerPage({super.key});
+
   @override
   _WeightPickerPageState createState() => _WeightPickerPageState();
 }
@@ -89,7 +91,7 @@ class _WeightPickerPageState extends State<WeightPickerPage> {
                 ),
               ),
               const SizedBox(height: 40),
-              Container(
+              SizedBox(
                 height: 150,
                 child: RotatedBox(
                   quarterTurns: 3,

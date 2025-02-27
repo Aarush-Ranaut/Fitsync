@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
 import 'auth_service.dart';
@@ -6,7 +5,7 @@ import 'package:fitsync_app/widgets/user_info/profile_screen.dart'; // Import Pr
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  const SignupScreen({super.key});
 
   @override
   _SignupScreenState createState() => _SignupScreenState();
