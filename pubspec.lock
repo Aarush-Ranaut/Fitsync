@@ -368,22 +368,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.3"
+  google_mlkit_barcode_scanning:
+    dependency: "direct main"
+    description:
+      name: google_mlkit_barcode_scanning
+      sha256: "5852d1daa007a05b33f99e3e3fa34227c49d9c41bc92a85d820666a57fd5c35f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.13.0"
   google_mlkit_commons:
     dependency: transitive
     description:
       name: google_mlkit_commons
-      sha256: "046586b381cdd139f7f6a05ad6998f7e339d061bd70158249907358394b5f496"
+      sha256: "7e9a6d6e66b44aa8cfe944bda9bc3346c52486dd890ca49e5bc98845cda40d7f"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.9.0"
   google_mlkit_pose_detection:
     dependency: "direct main"
     description:
       name: google_mlkit_pose_detection
-      sha256: "25027e81b40bd2197ad6f1d4f9a6c153a874cf5c66dbb5ac0a8a704573a79c70"
+      sha256: "05c4a6eaab12e575a55c83b357d76c1f694be5caf1dc8d5229a18327712f6685"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.0"
+    version: "0.13.0"
   google_sign_in:
     dependency: "direct main"
     description:

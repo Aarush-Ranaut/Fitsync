@@ -207,11 +207,13 @@
 //   }
 // }
 
+import 'package:fitsync_app/auth/signin.dart';
 import 'package:fitsync_app/widgets/exercise_selection.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' as intl;
+import 'barcode_scanner.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/ai_integration.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -264,13 +266,22 @@ class _HomeScreenState extends State<HomeScreen> {
           _navigateToCamera(context);
           break;
         case 2:
-          // Watch
+          _navigateToBarcodeScanner(context);
           break;
         case 3:
           _navigateToEditProfile(context);
           break;
       }
     });
+  }
+
+  void _logout(BuildContext context) {
+    FirebaseAuth.instance.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => SigninScreen()),
+      (route) => false,
+    );
   }
 
   void _navigateToEditProfile(BuildContext context) {
@@ -288,6 +299,15 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ExerciseSelectionScreen(),
+      ),
+    );
+  }
+
+  void _navigateToBarcodeScanner(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerScreen(),
       ),
     );
   }
@@ -623,6 +643,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onPressed: () {
                                   print('Notification button pressed');
                                 },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.logout,
+                                    color: Colors.white),
+                                onPressed: () => _logout(context),
                               ),
                             ),
                           ],

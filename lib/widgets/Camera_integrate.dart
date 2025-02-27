@@ -270,7 +270,7 @@ class _PoseScreenState extends State<PoseScreen> {
   int _selectedCameraIndex = 0; // Default: back camera
 
   // ✅ Server IP address
-  final String serverIP = "http://10.110.12.209:5050";
+  final String serverIP = "http://192.168.0.105:5050";
 
   @override
   void initState() {
@@ -370,6 +370,7 @@ class _PoseScreenState extends State<PoseScreen> {
     if (isModelLoaded) return;
 
     String loadModelUrl = "$serverIP/load_model_${widget.exercise}";
+    print(loadModelUrl);
 
     try {
       Response response = await dio.get(loadModelUrl);
