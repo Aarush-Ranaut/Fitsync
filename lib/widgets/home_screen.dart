@@ -9,6 +9,8 @@ import 'edit_profile_screen.dart';
 import '../widgets/ai_integration.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
+import 'ocr_processor.dart';
+
 class HomeScreen extends StatefulWidget {
   final String? username;
   final String? profilePictureUrl;
@@ -51,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
       switch (index) {
         case 0:
-          // Home
+          _navigateToOCR(context);
           break;
         case 1:
           _navigateToCamera(context);
@@ -81,6 +83,15 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => EditProfileScreen(userId: userId),
+      ),
+    );
+  }
+
+  void _navigateToOCR(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OCRProcessor(),
       ),
     );
   }

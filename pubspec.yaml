@@ -59,6 +59,8 @@ dependencies:
   intl: ^0.20.2
   syncfusion_flutter_gauges: ^28.2.6
   google_mlkit_barcode_scanning: ^0.13.0
+  google_mlkit_text_recognition: ^0.14.0
+  image_cropper: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -97,6 +99,7 @@ flutter:
     - assets/images/home.png
     - assets/images/profile.png
     - assets/images/camera.png
+    - assets/images/calorie_ex.png
 
    #- images/a_dot_ham.jpeg
 

@@ -226,7 +226,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   Future<void> _fetchProductDetails(String barcode) async {
-    String apiUrl = "http://192.168.0.105:5050/scan_barcode";
+    String apiUrl = "http://192.168.0.113:5050/scan_barcode";
 
     try {
       var response = await http.post(
