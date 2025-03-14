@@ -417,6 +417,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// ✅ Open Meeting Link
   Future<void> _launchMeetingLink(String meetingLink) async {
     final Uri meetingUri = Uri.parse(meetingLink);
+    print(meetingUri);
     if (await canLaunch(meetingUri.toString())) {
       await launch(meetingUri.toString());
     } else {
