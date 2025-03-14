@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' as intl;
 import 'barcode_scanner.dart';
+import 'barcode_scanner_choice.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/ai_integration.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -109,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BarcodeScannerScreen(),
+        builder: (context) => BarcodeScannerChoiceScreen(),
       ),
     );
   }
