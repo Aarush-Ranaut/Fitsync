@@ -1298,11 +1298,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
             )
           : isJoined
               ? TextButton(
-                  onPressed: () => _leaveCommunity(communityId),
+                  onPressed: () async {
+                    await _leaveCommunity(communityId);
+                    // Dynamically update the community list
+                    _fetchJoinedCommunities();
+                    setState(() {});
+                  },
                   child: const Text("Leave"),
                 )
               : ElevatedButton(
-                  onPressed: () => _joinCommunity(communityId),
+                  onPressed: () async {
+                    await _joinCommunity(communityId);
+                    // Dynamically update the community list
+                    _fetchJoinedCommunities();
+                    setState(() {});
+                  },
                   child: const Text("Join"),
                 ),
       onTap: () {
