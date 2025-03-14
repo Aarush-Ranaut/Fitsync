@@ -22,45 +22,86 @@ class _CommunityManagementScreenState extends State<CommunityManagementScreen> {
     _membersFuture = _fetchMembers();
   }
 
-  // Fetch members of the community
+  // Fetch members of the community and their names using a similar approach to ChatScreen
   Future<List<Map<String, String>>> _fetchMembers() async {
-    DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-        .instance
-        .collection('community_members')
-        .doc(widget.communityId)
-        .get();
+    try {
+      // Debugging: Print the communityId being used
+      print("Fetching members for community ID: ${widget.communityId}");
 
-    Map<String, dynamic>? members = snapshot.data();
-    if (members != null) {
-      List<Map<String, String>> memberDetails = [];
-      for (String memberId in members.keys) {
-        // Fetch the name of the member using the memberId
-        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-            .collection(
-                'users') // Assuming you store user info under 'users' collection
-            .doc(memberId)
-            .get();
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('community_members')
+          .doc(widget.communityId)
+          .get();
 
-        // Cast the snapshot data to Map<String, dynamic> to access the fields
-        String firstName =
-            (userSnapshot.data() as Map<String, dynamic>)['firstName'] ?? '';
-        String lastName =
-            (userSnapshot.data() as Map<String, dynamic>)['lastName'] ?? '';
-        String memberName = '$firstName $lastName'.trim();
+      // Debugging: Check if snapshot is successfully fetched
+      print("Snapshot fetched: ${snapshot.exists}");
 
-        memberDetails.add({'id': memberId, 'name': memberName});
+      Map<String, dynamic>? members = snapshot.data(); // No need to cast here
+
+      if (members != null) {
+        List<Map<String, String>> memberDetails = [];
+
+        // Debugging: Check how many members were found
+        print("Found ${members.length} members in the community.");
+
+        for (String memberId in members.keys) {
+          // Debugging: Print memberId being processed
+          print("Fetching name for memberId: $memberId");
+
+          DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+              .collection(
+                  'users') // Assuming user info is under 'users' collection
+              .doc(memberId)
+              .get();
+
+          // Debugging: Check if the userSnapshot is successfully fetched
+          if (userSnapshot.exists) {
+            print("User found for memberId: $memberId");
+            Map<String, dynamic> userData =
+                userSnapshot.data() as Map<String, dynamic>;
+
+            String firstName = userData['firstName'] ?? '';
+            String lastName = userData['lastName'] ?? '';
+            String memberName = '$firstName $lastName'.trim();
+
+            // Debugging: Print the fetched member's name
+            print("Fetched member name: $memberName");
+
+            memberDetails.add({'id': memberId, 'name': memberName});
+          } else {
+            print("User not found for memberId: $memberId");
+          }
+        }
+
+        return memberDetails;
+      } else {
+        print("No members found in the community.");
       }
-      return memberDetails;
+    } catch (e) {
+      // Debugging: Catch and print any errors that occur during fetching
+      print("Error while fetching members: $e");
     }
     return [];
   }
 
   // Kick a member from the community
   Future<void> _kickMember(String memberId) async {
-    await FirebaseFirestore.instance
-        .collection('community_members')
-        .doc(widget.communityId)
-        .update({memberId: FieldValue.delete()});
+    try {
+      // Debugging: Print the memberId being kicked
+      print("Kicking member: $memberId");
+
+      await FirebaseFirestore.instance
+          .collection('community_members')
+          .doc(widget.communityId)
+          .update({memberId: FieldValue.delete()});
+
+      // Debugging: Confirm the member has been kicked
+      print("Member kicked: $memberId");
+    } catch (e) {
+      // Debugging: Catch and print any errors that occur during kicking
+      print("Error while kicking member: $e");
+    }
   }
 
   @override
@@ -75,23 +116,31 @@ class _CommunityManagementScreenState extends State<CommunityManagementScreen> {
           }
 
           if (snapshot.hasError) {
+            // Debugging: Print any errors that occur while building the widget
+            print("Error in FutureBuilder: ${snapshot.error}");
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final members = snapshot.data ?? [];
 
+          // Debugging: Print how many members are found in FutureBuilder
+          print("Total members loaded: ${members.length}");
+
           return ListView.builder(
             itemCount: members.length,
             itemBuilder: (context, index) {
               final member = members[index];
-              final memberId = member['id'];
-              final memberName = member['name'];
+              final memberId = member['id']!;
+              final memberName = member['name']!;
+
+              // Debugging: Print each member's name as it's displayed
+              print("Displaying member: $memberName");
 
               return ListTile(
-                title: Text(memberName!),
+                title: Text(memberName),
                 trailing: IconButton(
                   icon: const Icon(Icons.remove_circle, color: Colors.red),
-                  onPressed: () => _kickMember(memberId!),
+                  onPressed: () => _kickMember(memberId),
                 ),
               );
             },
