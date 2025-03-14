@@ -551,7 +551,275 @@
 //   }
 // }
 
-//above + 3 section and deletion and leaving too
+//above + 3 section and deletion and leaving too FINALLLLL
+// import 'package:flutter/material.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'chat_screen.dart';
+
+// class CommunityScreen extends StatefulWidget {
+//   const CommunityScreen({super.key});
+
+//   @override
+//   _CommunityScreenState createState() => _CommunityScreenState();
+// }
+
+// class _CommunityScreenState extends State<CommunityScreen> {
+//   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+//   final FirebaseAuth _auth = FirebaseAuth.instance;
+//   final TextEditingController _communityNameController =
+//       TextEditingController();
+//   List<String> _joinedCommunityIds = [];
+//   List<String> _ownedCommunityIds = [];
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchJoinedCommunities();
+//     _fetchOwnedCommunities();
+//   }
+
+//   /// ✅ Fetch communities the user has joined
+//   Future<void> _fetchJoinedCommunities() async {
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     QuerySnapshot snapshot = await _firestore
+//         .collection('community_members')
+//         .where(user.uid, isEqualTo: true)
+//         .get();
+
+//     setState(() {
+//       _joinedCommunityIds = snapshot.docs.map((doc) => doc.id).toList();
+//     });
+//   }
+
+//   /// ✅ Fetch communities created by the user
+//   Future<void> _fetchOwnedCommunities() async {
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     QuerySnapshot snapshot = await _firestore
+//         .collection('communities')
+//         .where('creatorId', isEqualTo: user.uid)
+//         .get();
+
+//     setState(() {
+//       _ownedCommunityIds = snapshot.docs.map((doc) => doc.id).toList();
+//     });
+//   }
+
+//   void _createCommunity() async {
+//     if (_communityNameController.text.trim().isEmpty) return;
+
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     DocumentReference communityRef =
+//         await _firestore.collection('communities').add({
+//       'name': _communityNameController.text.trim(),
+//       'creatorId': user.uid,
+//       'createdAt': Timestamp.now(),
+//     });
+
+//     // Auto-add creator as a member
+//     await _firestore
+//         .collection('community_members')
+//         .doc(communityRef.id)
+//         .set({user.uid: true}, SetOptions(merge: true));
+
+//     _communityNameController.clear();
+//     _fetchJoinedCommunities();
+//     _fetchOwnedCommunities();
+//     Navigator.pop(context);
+//   }
+
+//   void _showCreateCommunityDialog() {
+//     showDialog(
+//       context: context,
+//       builder: (context) => AlertDialog(
+//         title: const Text("Create Community"),
+//         content: TextField(
+//           controller: _communityNameController,
+//           decoration: const InputDecoration(hintText: "Enter community name"),
+//         ),
+//         actions: [
+//           TextButton(
+//               onPressed: () => Navigator.pop(context),
+//               child: const Text("Cancel")),
+//           TextButton(onPressed: _createCommunity, child: const Text("Create")),
+//         ],
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text("Communities")),
+//       body: StreamBuilder(
+//         stream: _firestore
+//             .collection('communities')
+//             .orderBy('createdAt', descending: true)
+//             .snapshots(),
+//         builder: (context, snapshot) {
+//           if (!snapshot.hasData) {
+//             return const Center(child: CircularProgressIndicator());
+//           }
+
+//           final communities = snapshot.data!.docs;
+//           final currentUserId = _auth.currentUser?.uid;
+
+//           List<DocumentSnapshot> yourCommunities = [];
+//           List<DocumentSnapshot> joinedCommunities = [];
+//           List<DocumentSnapshot> otherCommunities = [];
+
+//           for (var community in communities) {
+//             final communityId = community.id;
+//             final creatorId = community['creatorId'];
+
+//             if (creatorId == currentUserId) {
+//               yourCommunities.add(community);
+//             } else if (_joinedCommunityIds.contains(communityId)) {
+//               joinedCommunities.add(community);
+//             } else {
+//               otherCommunities.add(community);
+//             }
+//           }
+
+//           return ListView(
+//             children: [
+//               if (yourCommunities.isNotEmpty) ...[
+//                 _sectionTitle("Your Communities"),
+//                 ...yourCommunities.map((community) {
+//                   return _buildCommunityTile(community, isOwner: true);
+//                 }),
+//               ],
+//               if (joinedCommunities.isNotEmpty) ...[
+//                 _sectionTitle("Joined Communities"),
+//                 ...joinedCommunities.map((community) {
+//                   return _buildCommunityTile(community, isJoined: true);
+//                 }),
+//               ],
+//               if (otherCommunities.isNotEmpty) ...[
+//                 _sectionTitle("Other Communities"),
+//                 ...otherCommunities.map((community) {
+//                   return _buildCommunityTile(community, isJoined: false);
+//                 }),
+//               ],
+//             ],
+//           );
+//         },
+//       ),
+//       floatingActionButton: FloatingActionButton(
+//         onPressed: _showCreateCommunityDialog,
+//         child: const Icon(Icons.add),
+//       ),
+//     );
+//   }
+
+//   /// ✅ Widget for section title
+//   Widget _sectionTitle(String title) {
+//     return Padding(
+//       padding: const EdgeInsets.all(10),
+//       child: Text(title,
+//           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+//     );
+//   }
+
+//   /// ✅ Builds a community tile
+//   Widget _buildCommunityTile(DocumentSnapshot community,
+//       {bool isOwner = false, bool isJoined = false}) {
+//     final communityId = community.id;
+//     final communityName = community['name'];
+
+//     return ListTile(
+//       title: Text(communityName),
+//       trailing: isOwner
+//           ? IconButton(
+//               icon: const Icon(Icons.delete, color: Colors.red),
+//               onPressed: () => _deleteCommunity(communityId),
+//             )
+//           : isJoined
+//               ? TextButton(
+//                   onPressed: () => _leaveCommunity(communityId),
+//                   child: const Text("Leave"),
+//                 )
+//               : ElevatedButton(
+//                   onPressed: () => _joinCommunity(communityId),
+//                   child: const Text("Join"),
+//                 ),
+//       onTap: () {
+//         Navigator.push(
+//           context,
+//           MaterialPageRoute(
+//             builder: (context) => ChatScreen(communityId: communityId),
+//           ),
+//         );
+//       },
+//     );
+//   }
+
+//   /// ✅ Delete a community (Only creator can delete)
+//   Future<void> _deleteCommunity(String communityId) async {
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     DocumentSnapshot communityDoc =
+//         await _firestore.collection('communities').doc(communityId).get();
+//     if (!communityDoc.exists || communityDoc['creatorId'] != user.uid) return;
+
+//     await _firestore.collection('communities').doc(communityId).delete();
+//     await _firestore.collection('community_members').doc(communityId).delete();
+
+//     setState(() {
+//       _ownedCommunityIds.remove(communityId);
+//       _joinedCommunityIds.remove(communityId);
+//     });
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Community deleted")),
+//     );
+//   }
+
+//   /// ✅ Leave a community
+//   Future<void> _leaveCommunity(String communityId) async {
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     await _firestore.collection('community_members').doc(communityId).update({
+//       user.uid: FieldValue.delete(),
+//     });
+
+//     setState(() {
+//       _joinedCommunityIds.remove(communityId);
+//     });
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Left the community")),
+//     );
+//   }
+
+//   /// ✅ Join a community
+//   Future<void> _joinCommunity(String communityId) async {
+//     User? user = _auth.currentUser;
+//     if (user == null) return;
+
+//     await _firestore.collection('community_members').doc(communityId).set(
+//       {user.uid: true},
+//       SetOptions(merge: true),
+//     );
+
+//     setState(() {
+//       _joinedCommunityIds.add(communityId);
+//     });
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Joined the community!")),
+//     );
+//   }
+// }
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -579,7 +847,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     _fetchOwnedCommunities();
   }
 
-  /// ✅ Fetch communities the user has joined
+  /// ✅ Fetch joined communities
   Future<void> _fetchJoinedCommunities() async {
     User? user = _auth.currentUser;
     if (user == null) return;
@@ -718,7 +986,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  /// ✅ Widget for section title
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.all(10),
@@ -736,9 +1003,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return ListTile(
       title: Text(communityName),
       trailing: isOwner
-          ? IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteCommunity(communityId),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  onPressed: () => _renameCommunity(communityId, communityName),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _deleteCommunity(communityId),
+                ),
+              ],
             )
           : isJoined
               ? TextButton(
@@ -760,62 +1036,54 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  /// ✅ Delete a community (Only creator can delete)
+  /// ✅ Rename a community (Only creator can rename)
+  Future<void> _renameCommunity(String communityId, String currentName) async {
+    TextEditingController renameController =
+        TextEditingController(text: currentName);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Rename Community"),
+        content: TextField(
+          controller: renameController,
+          decoration: const InputDecoration(hintText: "Enter new name"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _firestore
+                  .collection('communities')
+                  .doc(communityId)
+                  .update({'name': renameController.text.trim()});
+              Navigator.pop(context);
+            },
+            child: const Text("Rename"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteCommunity(String communityId) async {
-    User? user = _auth.currentUser;
-    if (user == null) return;
-
-    DocumentSnapshot communityDoc =
-        await _firestore.collection('communities').doc(communityId).get();
-    if (!communityDoc.exists || communityDoc['creatorId'] != user.uid) return;
-
     await _firestore.collection('communities').doc(communityId).delete();
     await _firestore.collection('community_members').doc(communityId).delete();
-
-    setState(() {
-      _ownedCommunityIds.remove(communityId);
-      _joinedCommunityIds.remove(communityId);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Community deleted")),
-    );
   }
 
-  /// ✅ Leave a community
   Future<void> _leaveCommunity(String communityId) async {
-    User? user = _auth.currentUser;
-    if (user == null) return;
-
     await _firestore.collection('community_members').doc(communityId).update({
-      user.uid: FieldValue.delete(),
+      _auth.currentUser!.uid: FieldValue.delete(),
     });
-
-    setState(() {
-      _joinedCommunityIds.remove(communityId);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Left the community")),
-    );
   }
 
-  /// ✅ Join a community
   Future<void> _joinCommunity(String communityId) async {
-    User? user = _auth.currentUser;
-    if (user == null) return;
-
     await _firestore.collection('community_members').doc(communityId).set(
-      {user.uid: true},
+      {_auth.currentUser!.uid: true},
       SetOptions(merge: true),
-    );
-
-    setState(() {
-      _joinedCommunityIds.add(communityId);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Joined the community!")),
     );
   }
 }
