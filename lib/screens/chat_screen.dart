@@ -467,6 +467,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     final bool isMe = msg.senderId == currentUserId;
+                    final DateTime messageTime = msg.timestamp.toDate();
+                    final Duration difference =
+                        DateTime.now().difference(messageTime);
+                    final bool within15Minutes = difference.inMinutes <= 15;
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
@@ -549,7 +553,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
 
                             // ✅ Delete Button for Sent Messages
-                            if (isMe)
+                            if ((isMe && within15Minutes) || _isCreator)
                               IconButton(
                                 icon:
                                     const Icon(Icons.delete, color: Colors.red),
