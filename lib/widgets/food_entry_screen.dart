@@ -463,7 +463,7 @@ class _FoodEntryScreenState extends State<FoodEntryScreen> {
               onChanged: _fetchFoodData,
               decoration: const InputDecoration(
                 labelText: 'Search (Check Serving Size Carefully)',
-                hintText: 'Type to search or enter manually',
+                hintText: 'Type to search',
                 suffixIcon: Icon(Icons.search),
               ),
             ),
