@@ -539,6 +539,7 @@ class _CalorieTrackerState extends State<CalorieTracker> {
   int dailyProteinGoal = 0;
   List<Map<String, dynamic>> foodEntries = [];
   String? userId;
+  bool _useWeightGoals = false;
 
   @override
   void initState() {
@@ -560,7 +561,13 @@ class _CalorieTrackerState extends State<CalorieTracker> {
 
   Future<void> _fetchDailyGoals() async {
     if (userId == null) return;
-    // Try to fetch the daily goals for the selected date.
+
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(userId!).get();
+    Map<String, dynamic> userData =
+        userDoc.data() as Map<String, dynamic>? ?? {};
+
+    // Check for existing daily goals first
     DocumentSnapshot goalDoc = await _firestore
         .collection('users')
         .doc(userId)
@@ -568,88 +575,191 @@ class _CalorieTrackerState extends State<CalorieTracker> {
         .doc(selectedDate)
         .get();
 
-    if (goalDoc.exists && goalDoc.data() is Map<String, dynamic>) {
+    if (goalDoc.exists) {
       final data = goalDoc.data() as Map<String, dynamic>;
       setState(() {
         dailyGoal = data['calorieGoal'] ?? 0;
         dailyProteinGoal = data['proteinGoal'] ?? 0;
       });
-    } else {
-      // If no goals for this date, try to find the most recent goals from a previous day.
-      QuerySnapshot querySnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('dailyGoals')
-          .where('date', isLessThanOrEqualTo: selectedDate)
-          .orderBy('date', descending: true)
-          .limit(1)
-          .get();
+      return;
+    }
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final previousGoalData =
-            querySnapshot.docs.first.data() as Map<String, dynamic>;
-        int previousCalorieGoal = previousGoalData['calorieGoal'] ?? 0;
-        int previousProteinGoal = previousGoalData['proteinGoal'] ?? 0;
-        setState(() {
-          dailyGoal = previousCalorieGoal;
-          dailyProteinGoal = previousProteinGoal;
-        });
-        // Save these goals for the current date so they carry forward.
+    // Check for weight-based goals
+    bool hasGainGoal = userData.containsKey('gain_calorieGoal');
+    bool hasLossGoal = userData.containsKey('loss_calorieGoal');
+
+    if (hasGainGoal || hasLossGoal) {
+      String? selectedGoal = userData['last_goal_type'];
+
+      // If both exist and no last type, ask user to choose
+      if (hasGainGoal && hasLossGoal && selectedGoal == null) {
+        selectedGoal = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Select Goal Type'),
+            content: const Text('Which goal would you like to use?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'gain'),
+                child: const Text('Weight Gain'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'loss'),
+                child: const Text('Weight Loss'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (selectedGoal != null) {
+        String prefix = selectedGoal == 'gain' ? 'gain_' : 'loss_';
+        int calorieGoal = (userData['${prefix}calorieGoal'] ?? 0).toInt();
+        int proteinGoal = (userData['${prefix}proteinGoal'] ?? 0).toInt();
+
         await _firestore
             .collection('users')
             .doc(userId)
             .collection('dailyGoals')
             .doc(selectedDate)
             .set({
-          'calorieGoal': previousCalorieGoal,
-          'proteinGoal': previousProteinGoal,
+          'calorieGoal': calorieGoal,
+          'proteinGoal': proteinGoal,
           'date': selectedDate,
+          'goal_type': selectedGoal,
         }, SetOptions(merge: true));
-      } else {
-        // If no previous goals exist, ask the user to enter new daily goals.
-        _askForDailyGoals();
+
+        setState(() {
+          dailyGoal = calorieGoal;
+          dailyProteinGoal = proteinGoal;
+        });
+        return;
       }
+    }
+
+    // Existing fallback logic
+    QuerySnapshot querySnapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('dailyGoals')
+        .where('date', isLessThanOrEqualTo: selectedDate)
+        .orderBy('date', descending: true)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      final previousGoalData =
+          querySnapshot.docs.first.data() as Map<String, dynamic>;
+      setState(() {
+        dailyGoal = previousGoalData['calorieGoal'] ?? 0;
+        dailyProteinGoal = previousGoalData['proteinGoal'] ?? 0;
+      });
+    } else {
+      _askForDailyGoals();
     }
   }
 
   Future<void> _askForDailyGoals() async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Set Your Daily Goals'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _goalController,
-                keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: 'Daily Calorie Goal'),
-              ),
-              TextField(
-                controller: _proteinGoalController,
-                keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: 'Daily Protein Goal (g)'),
-              ),
-            ],
-          ),
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(userId!).get();
+    Map<String, dynamic> userData =
+        userDoc.data() as Map<String, dynamic>? ?? {};
+
+    bool hasGain = userData.containsKey('gain_calorieGoal');
+    bool hasLoss = userData.containsKey('loss_calorieGoal');
+
+    if (hasGain || hasLoss) {
+      String? goalType = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Goal Selection'),
+          content: const Text('Choose which goals to use:'),
           actions: [
+            if (hasGain)
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'gain'),
+                child: const Text('Weight Gain Goals'),
+              ),
+            if (hasLoss)
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'loss'),
+                child: const Text('Weight Loss Goals'),
+              ),
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _updateDailyGoals();
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
+              onPressed: () => Navigator.pop(context, 'custom'),
+              child: const Text('Custom Goals'),
             ),
           ],
-        );
-      },
+        ),
+      );
+
+      if (goalType == 'gain' || goalType == 'loss') {
+        String prefix = '${goalType}_';
+        int calorieGoal = (userData['${prefix}calorieGoal'] ?? 0).toInt();
+        int proteinGoal = (userData['${prefix}proteinGoal'] ?? 0).toInt();
+
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('dailyGoals')
+            .doc(selectedDate)
+            .set({
+          'calorieGoal': calorieGoal,
+          'proteinGoal': proteinGoal,
+          'date': selectedDate,
+          'goal_type': goalType,
+        }, SetOptions(merge: true));
+
+        setState(() {
+          dailyGoal = calorieGoal;
+          dailyProteinGoal = proteinGoal;
+        });
+      } else if (goalType == 'custom') {
+        _showCustomGoalDialog();
+      }
+    } else {
+      _showCustomGoalDialog();
+    }
+  }
+
+  void _showCustomGoalDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Custom Goals'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _goalController,
+              decoration: InputDecoration(
+                labelText: 'Calories (current: $dailyGoal)',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _proteinGoalController,
+              decoration: InputDecoration(
+                labelText: 'Protein in grams (current: $dailyProteinGoal)',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: Navigator.of(context).pop,
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateDailyGoals();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -916,23 +1026,31 @@ class _CalorieTrackerState extends State<CalorieTracker> {
               ),
             ),
             Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  total,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  "/ $goal",
-                  style: const TextStyle(fontSize: 12),
-                ),
+                Text(total,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: _useWeightGoals ? Colors.blue : Colors.black,
+                    )),
+                Text("/ $goal",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _useWeightGoals ? Colors.blue : Colors.black,
+                    )),
               ],
             ),
           ],
         ),
         const SizedBox(height: 4),
-        Text(label),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label),
+            if (_useWeightGoals)
+              Icon(Icons.fitness_center, size: 16, color: Colors.blue),
+          ],
+        ),
       ],
     );
   }

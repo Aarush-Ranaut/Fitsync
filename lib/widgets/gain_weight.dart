@@ -107,17 +107,15 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
       double dailyProtein, double finalCalorieGoal) async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showSnackbar("User not logged in.");
-        return;
-      }
+      if (user == null) return;
 
       await _firestore.collection("users").doc(user.uid).set({
-        "goalWeight": goalWeight,
-        "goalDuration": months,
-        "dailyCalorieSurplus": dailyCalories,
-        "dailyProteinIntake": dailyProtein,
-        "finalDailyCalorieGoal": finalCalorieGoal,
+        "gain_goalWeight": goalWeight,
+        "gain_duration": months,
+        "gain_calorieGoal": finalCalorieGoal,
+        "gain_proteinGoal": dailyProtein,
+        "last_goal_type": "gain", // Track last used goal type
+        "goal_set_date": FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       _showSnackbar("Goal data saved successfully!");

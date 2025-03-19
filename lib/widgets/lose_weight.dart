@@ -111,17 +111,15 @@ class _LoseWeightScreenState extends State<LoseWeightScreen> {
       double finalCalorieGoal) async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showSnackbar("User not logged in.");
-        return;
-      }
+      if (user == null) return;
 
       await _firestore.collection("users").doc(user.uid).set({
-        "goalWeightLoss": goalWeightLoss,
-        "goalDuration": months,
-        "dailyCalorieDeficit": dailyCalorieDeficit,
-        "dailyProteinIntake": dailyProtein,
-        "finalDailyCalorieGoal": finalCalorieGoal,
+        "loss_goalWeight": goalWeightLoss,
+        "loss_duration": months,
+        "loss_calorieGoal": finalCalorieGoal,
+        "loss_proteinGoal": dailyProtein,
+        "last_goal_type": "loss", // Track last used goal type
+        "goal_set_date": FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       _showSnackbar("Goal data saved successfully!");
