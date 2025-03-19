@@ -122,23 +122,30 @@ class _FoodEntryScreenState extends State<FoodEntryScreen> {
   // Also set the quantity field to the default serving size.
   void _selectPredefinedFood(String name, double calories, double protein,
       double fat, double carbs, double servingSize, String servingSizeUnit) {
+    // Calculate nutrients for the given serving size
+    final double servingCalories = (calories * servingSize) / 100.0;
+    final double servingProtein = (protein * servingSize) / 100.0;
+    final double servingFat = (fat * servingSize) / 100.0;
+    final double servingCarbs = (carbs * servingSize) / 100.0;
+
+    print("Selected Food: $name");
+    print(
+        "API per 100g -> Calories: $calories, Protein: $protein, Fat: $fat, Carbs: $carbs");
+    print(
+        "Computed per ${servingSize.toStringAsFixed(2)} $servingSizeUnit -> Calories: ${servingCalories.toStringAsFixed(2)}, Protein: ${servingProtein.toStringAsFixed(2)}g, Fat: ${servingFat.toStringAsFixed(2)}g, Carbs: ${servingCarbs.toStringAsFixed(2)}g");
+
     setState(() {
       _foodController.text = name;
       _selectedCaloriesPer100g = calories;
       _selectedProteinPer100g = protein;
       _selectedFatPer100g = fat;
       _selectedCarbsPer100g = carbs;
-      _defaultServingSize =
-          double.parse(servingSize.toStringAsFixed(2)); // round to 2 decimals
+      _defaultServingSize = servingSize;
       _defaultServingSizeUnit = servingSizeUnit;
-      // Set input mode: if the provided unit is not grams, use that; otherwise, "g".
       _selectedInputMode =
           (_defaultServingSizeUnit != "g") ? _defaultServingSizeUnit : "g";
-      // Set the quantity field to the default serving size with 2 decimals.
       _quantityController.text = _defaultServingSize.toStringAsFixed(2);
-      // Calculate nutrient values based on the default serving size.
       _calculateNutrients();
-      // Clear the food results list.
       foodResults = [];
     });
   }
@@ -146,24 +153,33 @@ class _FoodEntryScreenState extends State<FoodEntryScreen> {
   // Calculates nutrients based on the user's serving input.
   void _calculateNutrients() {
     double quantity = double.tryParse(_quantityController.text) ?? 0.0;
+
+    print("User Entered Quantity: $quantity $_selectedInputMode");
+
     double grams;
     if (_selectedInputMode == "g") {
       grams = quantity;
     } else if (_selectedInputMode == "mg") {
-      grams = (quantity * _defaultServingSize) / 1000.0;
+      grams = quantity / 1000.0; // Convert mg to g
     } else {
-      grams = quantity * _defaultServingSize;
+      grams = quantity *
+          (_defaultServingSize / 100.0); // Convert based on serving size
     }
+
+    print("Converted Grams: $grams g");
+
+    // Ensure that calculations are properly based on 100g scaling
     setState(() {
-      _calculatedCalories = double.parse(
-          ((_selectedCaloriesPer100g * grams) / 100).toStringAsFixed(2));
-      _calculatedProtein = double.parse(
-          ((_selectedProteinPer100g * grams) / 100).toStringAsFixed(2));
-      _calculatedFat = double.parse(
-          ((_selectedFatPer100g * grams) / 100).toStringAsFixed(2));
-      _calculatedCarbs = double.parse(
-          ((_selectedCarbsPer100g * grams) / 100).toStringAsFixed(2));
+      _calculatedCalories = (_selectedCaloriesPer100g * grams) / 100.0;
+      _calculatedProtein = (_selectedProteinPer100g * grams) / 100.0;
+      _calculatedFat = (_selectedFatPer100g * grams) / 100.0;
+      _calculatedCarbs = (_selectedCarbsPer100g * grams) / 100.0;
     });
+
+    print("Calculated Calories: $_calculatedCalories");
+    print("Calculated Protein: $_calculatedProtein g");
+    print("Calculated Fat: $_calculatedFat g");
+    print("Calculated Carbs: $_calculatedCarbs g");
   }
 
   void _addFoodEntry() {
@@ -204,7 +220,8 @@ class _FoodEntryScreenState extends State<FoodEntryScreen> {
               controller: _foodController,
               onChanged: _fetchFoodData,
               decoration: const InputDecoration(
-                labelText: 'Search (Check Serving Size Carefully)',
+                labelText:
+                    'Search (check serving size; nutrients values per 100g)',
                 hintText: 'Type to search',
                 suffixIcon: Icon(Icons.search),
               ),
@@ -222,12 +239,30 @@ class _FoodEntryScreenState extends State<FoodEntryScreen> {
                     final food = foodResults[index];
                     return ListTile(
                       title: Text(food['name']),
-                      subtitle: Text(
-                        "Calories: ${food['caloriesPer100g']} kcal\n"
-                        "Protein: ${food['proteinPer100g']}g | "
-                        "Fat: ${food['fatPer100g']}g | "
-                        "Carbs: ${food['carbsPer100g']}g\n"
-                        "Serving: ${food['servingSize'].toStringAsFixed(2)} ${food['servingSizeUnit']}",
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Per 100g:",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            "Calories: ${food['caloriesPer100g']} kcal, Protein: ${food['proteinPer100g']}g, Fat: ${food['fatPer100g']}g, Carbs: ${food['carbsPer100g']}g",
+                          ),
+                          if (food['servingSize'] != 100.0) ...[
+                            SizedBox(height: 8),
+                            Text(
+                              "Serving Size ${food['servingSize'].toStringAsFixed(2)} ${food['servingSizeUnit']}:",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              "Calories: ${(food['caloriesPer100g'] * food['servingSize'] / 100.0).toStringAsFixed(2)} kcal, "
+                              "Protein: ${(food['proteinPer100g'] * food['servingSize'] / 100.0).toStringAsFixed(2)}g, "
+                              "Fat: ${(food['fatPer100g'] * food['servingSize'] / 100.0).toStringAsFixed(2)}g, "
+                              "Carbs: ${(food['carbsPer100g'] * food['servingSize'] / 100.0).toStringAsFixed(2)}g",
+                            ),
+                          ],
+                        ],
                       ),
                       onTap: () {
                         _selectPredefinedFood(
