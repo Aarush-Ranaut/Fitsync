@@ -280,6 +280,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'calorie_tracker.dart';
 
 class GainWeightScreen extends StatefulWidget {
   @override
@@ -445,8 +446,10 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
           .doc(currentDate)
           .set(data, SetOptions(merge: true));
 
-      // Remove the goal_doc reference from user document
-      // since we're using date-based documents now
+      // Navigate to CalorieTracker after successful save
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => CalorieTracker()),
+      );
 
       _showSnackbar("Goal saved successfully!");
     } catch (e) {

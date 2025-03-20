@@ -288,6 +288,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import 'calorie_tracker.dart';
+
 class LoseWeightScreen extends StatefulWidget {
   @override
   _LoseWeightScreenState createState() => _LoseWeightScreenState();
@@ -460,6 +462,11 @@ class _LoseWeightScreenState extends State<LoseWeightScreen> {
           .collection("calorie_goal")
           .doc(currentDate)
           .set(data, SetOptions(merge: true));
+
+      // Navigate to CalorieTracker after successful save
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => CalorieTracker()),
+      );
 
       _showSnackBar("Goal saved successfully!");
     } catch (e) {
