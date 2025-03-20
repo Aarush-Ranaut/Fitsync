@@ -53,41 +53,63 @@ class _CalorieTrackerState extends State<CalorieTracker> {
   Future<void> _fetchDailyGoals() async {
     if (userId == null) return;
 
-    DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(userId).get();
-    String? goalDocId = userDoc.get('goal_doc');
+    // First try to get goal for selected date
+    DocumentSnapshot dateGoalDoc = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('calorie_goal')
+        .doc(selectedDate)
+        .get();
 
-    if (goalDocId != null) {
-      DocumentSnapshot goalDoc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('calorie_goal')
-          .doc(goalDocId)
-          .get();
-
-      if (goalDoc.exists) {
-        final data = goalDoc.data() as Map<String, dynamic>;
-        setState(() {
-          dailyGoal = (data['finalDailyCalorieGoal'] as num?)?.toInt() ?? 0;
-          dailyProteinGoal = (data['dailyProteinIntake'] as num?)?.toInt() ?? 0;
-        });
-        return;
-      }
+    if (dateGoalDoc.exists) {
+      _updateGoalsFromDoc(dateGoalDoc);
+      return;
     }
 
-    final userData = userDoc.data() as Map<String, dynamic>?;
-    if (userData != null) {
-      setState(() {
-        dailyGoal = (userData['calorieGoal'] as num?)?.toInt() ?? 0;
-        dailyProteinGoal = (userData['proteinGoal'] as num?)?.toInt() ?? 0;
-      });
+    // If no goal for selected date, find most recent goal
+    QuerySnapshot querySnapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('calorie_goal')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .get();
 
-      if (dailyGoal == 0 || dailyProteinGoal == 0) {
-        _askForDailyGoals();
+    if (querySnapshot.docs.isNotEmpty) {
+      final doc = querySnapshot.docs.first;
+      _updateGoalsFromDoc(doc);
+      // Add explicit type casting and null check
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data != null) {
+        await _saveCurrentDateGoal(data);
       }
     } else {
       _askForDailyGoals();
     }
+  }
+
+// Also update _updateGoalsFromDoc to handle type casting
+  void _updateGoalsFromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>?;
+    if (data == null) return;
+
+    setState(() {
+      dailyGoal = (data['finalDailyCalorieGoal'] as num?)?.toInt() ?? 0;
+      dailyProteinGoal = (data['dailyProteinIntake'] as num?)?.toInt() ?? 0;
+    });
+  }
+
+  Future<void> _saveCurrentDateGoal(Map<String, dynamic> data) async {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('calorie_goal')
+        .doc(selectedDate)
+        .set({
+      ...data,
+      'date': selectedDate,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> _askForDailyGoals() async {
@@ -134,29 +156,21 @@ class _CalorieTrackerState extends State<CalorieTracker> {
   Future<void> _updateDailyGoals() async {
     if (userId == null) return;
 
-    int calorieGoal = int.tryParse(_goalController.text) ?? 0;
-    int proteinGoal = int.tryParse(_proteinGoalController.text) ?? 0;
+    int calorieGoal = int.tryParse(_goalController.text) ?? dailyGoal;
+    int proteinGoal =
+        int.tryParse(_proteinGoalController.text) ?? dailyProteinGoal;
 
-    DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(userId).get();
-    String? goalDocId = userDoc.get('goal_doc');
-
-    if (goalDocId != null) {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('calorie_goal')
-          .doc(goalDocId)
-          .update({
-        'finalDailyCalorieGoal': calorieGoal.toDouble(),
-        'dailyProteinIntake': proteinGoal.toDouble(),
-      });
-    } else {
-      await _firestore.collection('users').doc(userId).set({
-        'calorieGoal': calorieGoal,
-        'proteinGoal': proteinGoal,
-      }, SetOptions(merge: true));
-    }
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('calorie_goal')
+        .doc(selectedDate)
+        .set({
+      'finalDailyCalorieGoal': calorieGoal.toDouble(),
+      'dailyProteinIntake': proteinGoal.toDouble(),
+      'date': selectedDate,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     setState(() {
       dailyGoal = calorieGoal;

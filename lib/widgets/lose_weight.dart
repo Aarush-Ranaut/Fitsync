@@ -286,6 +286,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class LoseWeightScreen extends StatefulWidget {
   @override
@@ -438,6 +439,8 @@ class _LoseWeightScreenState extends State<LoseWeightScreen> {
       User? user = _auth.currentUser;
       if (user == null) return;
 
+      final currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
       final data = {
         "goalType": "lose",
         "targetWeight": targetWeight,
@@ -447,26 +450,18 @@ class _LoseWeightScreenState extends State<LoseWeightScreen> {
         "finalDailyCalorieGoal": finalCalorieGoal,
         "maintenanceCalories": maintenanceCalories,
         "currentWeight": currentWeight,
+        "date": currentDate,
         "timestamp": FieldValue.serverTimestamp(),
       };
 
-      // Update the existing document or create a new one
-      if (goalDocId != null) {
-        await _firestore
-            .collection("users")
-            .doc(user.uid)
-            .collection("calorie_goal")
-            .doc(goalDocId)
-            .update(data);
-      } else {
-        await _firestore
-            .collection("users")
-            .doc(user.uid)
-            .collection("calorie_goal")
-            .add(data);
-      }
+      await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("calorie_goal")
+          .doc(currentDate)
+          .set(data, SetOptions(merge: true));
 
-      _showSnackBar("Goal updated successfully!");
+      _showSnackBar("Goal saved successfully!");
     } catch (e) {
       _showSnackBar("Error saving goal data.");
     }

@@ -279,6 +279,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class GainWeightScreen extends StatefulWidget {
   @override
@@ -420,6 +421,9 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // Use current date as document ID
+      final currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
       final data = {
         "goalType": "gain",
         "targetWeight": goalWeight,
@@ -429,31 +433,20 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
         "finalDailyCalorieGoal": finalCalorieGoal,
         "currentWeight": currentWeight,
         "maintenanceCalories": maintenanceCalories,
+        "date": currentDate,
         "timestamp": FieldValue.serverTimestamp(),
       };
 
-      // If goalDocId exists, update the existing document; otherwise, create a new one
-      if (goalDocId != null) {
-        await _firestore
-            .collection("users")
-            .doc(user.uid)
-            .collection("calorie_goal")
-            .doc(goalDocId)
-            .set(data);
-      } else {
-        final newDocRef = await _firestore
-            .collection("users")
-            .doc(user.uid)
-            .collection("calorie_goal")
-            .add(data);
+      // Save/update with date-based document ID
+      await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("calorie_goal")
+          .doc(currentDate)
+          .set(data, SetOptions(merge: true));
 
-        // Save the document ID in the user's main document
-        await _firestore.collection("users").doc(user.uid).update({
-          "goal_doc": newDocRef.id,
-        });
-
-        goalDocId = newDocRef.id;
-      }
+      // Remove the goal_doc reference from user document
+      // since we're using date-based documents now
 
       _showSnackbar("Goal saved successfully!");
     } catch (e) {
