@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'gain_weight.dart';
 import 'lose_weight.dart';
-import 'maintain_weight.dart';
 
 class GoalSelectionScreen extends StatelessWidget {
   final double maintenanceCalories;
@@ -48,20 +47,6 @@ class GoalSelectionScreen extends StatelessWidget {
                 child: Text("Lose Weight"),
               ),
               SizedBox(height: 15),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MaintainWeightScreen(
-                        maintenanceCalories: maintenanceCalories,
-                        bodyWeight: bodyWeight,
-                      ),
-                    ),
-                  );
-                },
-                child: Text("Maintain Weight"),
-              ),
             ],
           ),
         ),

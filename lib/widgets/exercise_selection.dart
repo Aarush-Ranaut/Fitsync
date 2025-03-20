@@ -231,6 +231,8 @@
 
 // exercise selection + calorie track + Maintainence calorie
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/Camera_integrate.dart';
 import '../screens/community_screen.dart';
 import '../widgets/calorie_tracker.dart';
@@ -238,6 +240,40 @@ import '../widgets/maintenance_calorie_screen.dart'; // Import the new screen
 
 class ExerciseSelectionScreen extends StatelessWidget {
   const ExerciseSelectionScreen({super.key});
+
+  Future<bool> _checkCalorieGoalExists() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      var calorieGoalSnapshot = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .collection("calorie_goal")
+          .limit(1) // Check if at least one document exists
+          .get();
+
+      return calorieGoalSnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print("Error checking calorie goal: $e");
+      return false;
+    }
+  }
+
+  void _handleTrackCalories(BuildContext context) async {
+    bool goalExists = await _checkCalorieGoalExists();
+    if (goalExists) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => CalorieTracker()),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => MaintenanceCalorieScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -252,8 +288,7 @@ class ExerciseSelectionScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => PoseScreen(exercise: 1),
-                  ),
+                      builder: (context) => PoseScreen(exercise: 1)),
                 );
               },
               child: Text("Exercise 1"),
@@ -264,8 +299,7 @@ class ExerciseSelectionScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => PoseScreen(exercise: 2),
-                  ),
+                      builder: (context) => PoseScreen(exercise: 2)),
                 );
               },
               child: Text("Exercise 2"),
@@ -275,23 +309,14 @@ class ExerciseSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => CommunityScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => CommunityScreen()),
                 );
               },
               child: Text("Open Community"),
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CalorieTracker(),
-                  ),
-                );
-              },
+              onPressed: () => _handleTrackCalories(context),
               child: Text("Track Calories"),
             ),
             SizedBox(height: 20),
@@ -300,8 +325,7 @@ class ExerciseSelectionScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => MaintenanceCalorieScreen(),
-                  ),
+                      builder: (context) => MaintenanceCalorieScreen()),
                 );
               },
               child: Text("Calculate Maintenance Calories"),
