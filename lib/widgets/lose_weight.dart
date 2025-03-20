@@ -8,127 +8,170 @@ class LoseWeightScreen extends StatefulWidget {
 }
 
 class _LoseWeightScreenState extends State<LoseWeightScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final TextEditingController _goalWeightController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
-  final TextEditingController _maintenanceCaloriesController =
-      TextEditingController();
 
+  double? currentWeight;
+  double? targetWeight;
+  double? maintenanceCalories;
   double? dailyCalorieDeficit;
   double? dailyProtein;
-  double? finalGoalWeight;
   double? finalDailyCalorieGoal;
-  bool isLoading = true;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchPreviousData();
+    _fetchUserData();
   }
 
-  Future<void> _fetchPreviousData() async {
+  /// Fetch user data (current weight & maintenance calories) from Firestore
+  Future<void> _fetchUserData() async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      User? user = _auth.currentUser;
       if (user == null) {
         setState(() => isLoading = false);
-        _showSnackbar("User not logged in.");
+        _showSnackBar("User not logged in.");
         return;
       }
 
-      DocumentSnapshot userDoc =
-          await _firestore.collection("users").doc(user.uid).get();
-      if (!userDoc.exists || userDoc.data() == null) {
-        setState(() => isLoading = false);
-        return;
+      // Get current weight from Firestore
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        currentWeight = (userDoc.data()?['weight'] as num?)?.toDouble();
       }
 
-      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+      // Get maintenance calories from Firestore
+      final maintenanceDoc = await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("maintenance_data")
+          .doc("maintenance")
+          .get();
 
-      setState(() {
-        _goalWeightController.text = data["goalWeightLoss"]?.toString() ?? "";
+      maintenanceCalories = maintenanceDoc.exists
+          ? (maintenanceDoc["maintenanceCalories"] as num?)?.toDouble()
+          : null;
+
+      // Get previous weight loss goals
+      final goalsSnapshot = await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("lose_weight_goals")
+          .orderBy("timestamp", descending: true)
+          .limit(1)
+          .get();
+
+      if (goalsSnapshot.docs.isNotEmpty) {
+        final data = goalsSnapshot.docs.first.data() as Map<String, dynamic>;
+
+        _goalWeightController.text = data["targetWeight"]?.toString() ?? "";
         _durationController.text = data["goalDuration"]?.toString() ?? "";
-        _maintenanceCaloriesController.text =
-            data["maintenanceCalories"]?.toString() ?? "";
+
         dailyCalorieDeficit = (data["dailyCalorieDeficit"] ?? 0).toDouble();
         dailyProtein = (data["dailyProteinIntake"] ?? 0).toDouble();
-        finalGoalWeight = (data["finalGoalWeight"] ?? 0).toDouble();
         finalDailyCalorieGoal = (data["finalDailyCalorieGoal"] ?? 0).toDouble();
-        isLoading = false;
-      });
+      }
 
-      _showSnackbar("Previous goal data loaded successfully!");
+      setState(() => isLoading = false);
     } catch (e) {
       setState(() => isLoading = false);
-      _showSnackbar("Error fetching previous data.");
+      _showSnackBar("Error fetching data: ${e.toString()}");
     }
   }
 
+  /// Calculate weight loss goals based on user input
   Future<void> _calculateLoseGoal() async {
     try {
-      double? goalWeightLoss = double.tryParse(_goalWeightController.text);
+      double? targetWeightInput = double.tryParse(_goalWeightController.text);
       int? months = int.tryParse(_durationController.text);
-      double? maintenanceCalories =
-          double.tryParse(_maintenanceCaloriesController.text);
 
-      if (goalWeightLoss == null ||
+      if (targetWeightInput == null ||
           months == null ||
           months <= 0 ||
-          maintenanceCalories == null) {
-        _showSnackbar("Please enter valid values.");
+          maintenanceCalories == null ||
+          currentWeight == null) {
+        _showSnackBar("Please enter valid values.");
         return;
       }
 
+      // Ensure target weight is lower than current weight
+      if (targetWeightInput >= currentWeight!) {
+        _showSnackBar("Target weight must be lower than current weight.");
+        return;
+      }
+
+      // Calculate weight loss amount
+      double weightLoss = currentWeight! - targetWeightInput;
+
       // 7700 kcal = 1kg of fat loss
-      double totalCalorieDeficit = goalWeightLoss * 7700;
+      double totalCalorieDeficit = weightLoss * 7700;
       double dailyCalorieDeficit = totalCalorieDeficit / (months * 30);
 
-      // Protein intake calculation (1.2 to 2.0g per kg for weight loss)
-      double dailyProteinIntake = goalWeightLoss * 1.5;
+      // Protein intake calculation (1.5g per kg of target weight)
+      double dailyProteinIntake = targetWeightInput * 1.5;
 
       // Final daily calorie intake goal
       double calculatedFinalDailyCalorieGoal =
-          maintenanceCalories - dailyCalorieDeficit;
+          maintenanceCalories! - dailyCalorieDeficit;
 
       setState(() {
+        targetWeight = targetWeightInput;
         this.dailyCalorieDeficit = dailyCalorieDeficit;
         dailyProtein = dailyProteinIntake;
         finalDailyCalorieGoal = calculatedFinalDailyCalorieGoal;
       });
 
-      await _storeData(goalWeightLoss, months, dailyCalorieDeficit,
-          dailyProteinIntake, calculatedFinalDailyCalorieGoal);
+      await _storeData(
+        targetWeightInput,
+        months,
+        dailyCalorieDeficit,
+        dailyProteinIntake,
+        calculatedFinalDailyCalorieGoal,
+      );
     } catch (e) {
-      _showSnackbar("Error calculating goal.");
+      _showSnackBar("Error calculating goal.");
     }
   }
 
+  /// Store weight loss goal in Firestore
   Future<void> _storeData(
-      double goalWeightLoss,
-      int months,
-      double dailyCalorieDeficit,
-      double dailyProtein,
-      double finalCalorieGoal) async {
+    double targetWeight,
+    int months,
+    double dailyCalorieDeficit,
+    double dailyProtein,
+    double finalCalorieGoal,
+  ) async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      User? user = _auth.currentUser;
       if (user == null) return;
 
-      await _firestore.collection("users").doc(user.uid).set({
-        "loss_goalWeight": goalWeightLoss,
-        "loss_duration": months,
-        "loss_calorieGoal": finalCalorieGoal,
-        "loss_proteinGoal": dailyProtein,
-        "last_goal_type": "loss", // Track last used goal type
-        "goal_set_date": FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("lose_weight_goals")
+          .add({
+        "targetWeight": targetWeight,
+        "goalDuration": months,
+        "dailyCalorieDeficit": dailyCalorieDeficit,
+        "dailyProteinIntake": dailyProtein,
+        "finalDailyCalorieGoal": finalCalorieGoal,
+        "maintenanceCalories": maintenanceCalories,
+        "currentWeight": currentWeight,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
 
-      _showSnackbar("Goal data saved successfully!");
+      _showSnackBar("Goal saved successfully!");
     } catch (e) {
-      _showSnackbar("Error saving goal data.");
+      _showSnackBar("Error saving goal data.");
     }
   }
 
-  void _showSnackbar(String message) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
@@ -136,56 +179,106 @@ class _LoseWeightScreenState extends State<LoseWeightScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Lose Weight")),
+      appBar: AppBar(title: Text("Lose Weight Plan")),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: ListView(
                 children: [
                   Text(
-                      "Enter your weight loss goal (kg), duration (months), and maintenance calories:",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center),
+                    "Create Your Weight Loss Plan",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
                   SizedBox(height: 20),
-                  TextField(
+                  _buildInputField(
                     controller: _goalWeightController,
-                    keyboardType: TextInputType.number,
-                    decoration:
-                        InputDecoration(labelText: "Target weight loss (kg)"),
+                    label: "Target Weight (kg)",
+                    hint: "Enter your target weight",
                   ),
-                  SizedBox(height: 10),
-                  TextField(
+                  _buildInputField(
                     controller: _durationController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: "Duration (months)"),
+                    label: "Duration (months)",
+                    hint: "Enter timeline in months",
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _calculateLoseGoal,
-                    child: Text("Calculate Daily Goals"),
+                    child: Text("Calculate Plan"),
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 30),
                   if (dailyCalorieDeficit != null &&
                       dailyProtein != null &&
                       finalDailyCalorieGoal != null)
-                    Column(
-                      children: [
-                        Text(
-                          "Daily Calorie Deficit: ${dailyCalorieDeficit!.toStringAsFixed(2)} kcal\n"
-                          "Final Daily Calorie Goal: ${finalDailyCalorieGoal!.toStringAsFixed(2)} kcal\n"
-                          "Daily Protein Intake: ${dailyProtein!.toStringAsFixed(2)} g",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                    _buildResultsCard(),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: OutlineInputBorder(),
+          filled: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsCard() {
+    return Card(
+      elevation: 5,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Text(
+              "Your Daily Targets",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+            SizedBox(height: 15),
+            _buildResultRow("Calorie Deficit:",
+                "${dailyCalorieDeficit!.toStringAsFixed(1)} kcal"),
+            _buildResultRow("Total Daily Calories:",
+                "${finalDailyCalorieGoal!.toStringAsFixed(1)} kcal"),
+            _buildResultRow(
+                "Protein Intake:", "${dailyProtein!.toStringAsFixed(1)} g"),
+            _buildResultRow(
+                "Target Weight:", "${targetWeight!.toStringAsFixed(1)} kg"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 16)),
+          Text(value,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }

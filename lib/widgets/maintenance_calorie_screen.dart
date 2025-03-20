@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/calorie_calculator.dart';
-import 'goal_selection_screen.dart'; // Import the new page
+import 'goal_selection_screen.dart';
 
 class MaintenanceCalorieScreen extends StatefulWidget {
   @override
@@ -13,16 +13,11 @@ class MaintenanceCalorieScreen extends StatefulWidget {
 class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
   final CalorieCalculator _calculator = CalorieCalculator();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  double? bmr;
-  double? maintenanceCalories;
-  double? lowerBound;
-  double? upperBound;
-  double? userWeight;
-  bool isLoading = true;
+  double? bmr, maintenanceCalories, lowerBound, upperBound, userWeight;
+  bool isLoading = true, isFirstTimeUser = false;
   String? selectedActivityLevel;
-  bool isFirstTimeUser =
-      false; // Track if user is using the feature for the first time
 
   List<String> activityLevels = [
     "Sedentary (little to no exercise)",
@@ -40,108 +35,95 @@ class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
 
   Future<void> _fetchUserData() async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      User? user = _auth.currentUser;
       if (user == null) {
         setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User not logged in.")),
-        );
+        _showSnackBar("User not logged in.");
         return;
       }
 
-      // Fetch BMR and weight
-      Map<String, dynamic>? userData =
-          await _calculator.fetchUserData(user.uid);
-
-      if (userData == null ||
-          userData['bmr'] == null ||
-          userData['weight'] == null) {
-        setState(() {
-          isLoading = false;
-          isFirstTimeUser = true; // User has no previous data
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  "Welcome! Please select your activity level and calculate your calories.")),
-        );
-        return;
-      }
-
-      // Fetch stored calorie data
+      String userId = user.uid;
       DocumentSnapshot userDoc =
-          await _firestore.collection("users").doc(user.uid).get();
+          await _firestore.collection("users").doc(userId).get();
 
       if (!userDoc.exists) {
-        // First time user, set default values
         setState(() {
-          bmr = userData['bmr'];
-          userWeight = userData['weight'];
+          isLoading = false;
           isFirstTimeUser = true;
-          isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  "No previous data found. Please enter details and calculate your calories.")),
-        );
-      } else {
-        // Fetch available values and set defaults for missing ones
-        setState(() {
-          bmr = userData['bmr'];
-          userWeight = userData['weight'];
-          maintenanceCalories = userDoc["maintenanceCalories"] ?? null;
-          lowerBound = userDoc["lowerBound"] ?? null;
-          upperBound = userDoc["upperBound"] ?? null;
-          selectedActivityLevel = userDoc["selectedActivityLevel"] ?? null;
-          isFirstTimeUser = false;
-          isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Previous data loaded successfully!")),
-        );
+        _showSnackBar("No user data found. Please update your details.");
+        return;
       }
-    } catch (e) {
-      print("Error fetching user data: $e");
+
+      Map<String, dynamic>? userData = userDoc.data() as Map<String, dynamic>?;
+
+      if (userData == null) {
+        setState(() {
+          isLoading = false;
+          isFirstTimeUser = true;
+        });
+        _showSnackBar("User data is null. Please update.");
+        return;
+      }
+
+      print("Fetched User Data: $userData");
+
+      double? storedBmr = (userData['bmr'] as num?)?.toDouble();
+      double? storedWeight = (userData['weight'] as num?)?.toDouble();
+
+      if (storedBmr == null || storedWeight == null) {
+        // Try recalculating BMR if missing
+        Map<String, dynamic>? calculatedData =
+            await _calculator.fetchUserData();
+        if (calculatedData != null) {
+          storedBmr = calculatedData['bmr'];
+          storedWeight = calculatedData['weight'];
+
+          // Save to Firestore
+          await _firestore.collection("users").doc(userId).set({
+            'bmr': storedBmr,
+            'weight': storedWeight,
+          }, SetOptions(merge: true));
+
+          print("Recalculated BMR and saved to Firestore: $storedBmr");
+        } else {
+          setState(() {
+            isLoading = false;
+            isFirstTimeUser = true;
+          });
+          _showSnackBar("Missing BMR or weight data. Please update.");
+          return;
+        }
+      }
+
       setState(() {
+        print("BMR before update: $bmr");
+        bmr = storedBmr;
+        userWeight = storedWeight;
+        print("BMR after update: $bmr");
+        isFirstTimeUser = false;
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Error fetching user data. Please try again later.")),
-      );
+
+      _showSnackBar("User data loaded successfully!");
+    } catch (e) {
+      setState(() => isLoading = false);
+      _showSnackBar("Error fetching user data. Please try again.");
     }
   }
 
   Future<void> _calculateFinalCalories() async {
-    if (bmr == null || selectedActivityLevel == null || userWeight == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select an activity level.")),
-      );
+    if (bmr == null || bmr == 0.0) {
+      _showSnackBar("BMR data is missing. Please update your details.");
       return;
     }
 
-    double activityFactor;
-    switch (selectedActivityLevel) {
-      case "Sedentary (little to no exercise)":
-        activityFactor = 1.2;
-        break;
-      case "Lightly active (1-3 days per week)":
-        activityFactor = 1.375;
-        break;
-      case "Moderately active (3-5 days per week)":
-        activityFactor = 1.55;
-        break;
-      case "Very active (6-7 days per week)":
-        activityFactor = 1.725;
-        break;
-      case "Super active (intense exercise daily)":
-        activityFactor = 1.9;
-        break;
-      default:
-        activityFactor = 1.55; // Default to moderate
+    if (selectedActivityLevel == null) {
+      _showSnackBar("Please select an activity level.");
+      return;
     }
 
+    double activityFactor = _getActivityFactor(selectedActivityLevel!);
     double estimatedCalories = bmr! * activityFactor;
     lowerBound = estimatedCalories * 0.95;
     upperBound = estimatedCalories * 1.05;
@@ -150,24 +132,47 @@ class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
       maintenanceCalories = estimatedCalories;
     });
 
-    // Store calculated values in Firebase Firestore
-    User? user = FirebaseAuth.instance.currentUser;
+    User? user = _auth.currentUser;
     if (user != null) {
-      await _firestore.collection("users").doc(user.uid).set({
+      await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("maintenance_data")
+          .doc("maintenance")
+          .set({
         "maintenanceCalories": estimatedCalories,
         "lowerBound": lowerBound,
         "upperBound": upperBound,
         "selectedActivityLevel": selectedActivityLevel,
+        "timestamp": FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Estimated Maintenance Calories: ${lowerBound!.toStringAsFixed(2)} - ${upperBound!.toStringAsFixed(2)} kcal",
-        ),
-      ),
+    _showSnackBar(
+      "Estimated Maintenance Calories: ${lowerBound?.toStringAsFixed(2) ?? 'N/A'} - ${upperBound?.toStringAsFixed(2) ?? 'N/A'} kcal",
     );
+  }
+
+  double _getActivityFactor(String level) {
+    switch (level) {
+      case "Sedentary (little to no exercise)":
+        return 1.2;
+      case "Lightly active (1-3 days per week)":
+        return 1.375;
+      case "Moderately active (3-5 days per week)":
+        return 1.55;
+      case "Very active (6-7 days per week)":
+        return 1.725;
+      case "Super active (intense exercise daily)":
+        return 1.9;
+      default:
+        return 1.55;
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -186,16 +191,16 @@ class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
                     Text(
                       isFirstTimeUser
                           ? "Welcome! Please select your activity level and calculate your calories."
-                          : "Your estimated BMR: ${bmr!.toStringAsFixed(2)} kcal",
+                          : (bmr != null
+                              ? "Your estimated BMR: ${bmr!.toStringAsFixed(2)} kcal"
+                              : "BMR not available"),
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 20),
-                    Text(
-                      "Select your activity level:",
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    Text("Select your activity level:",
+                        style: TextStyle(fontSize: 16)),
                     DropdownButton<String>(
                       value: selectedActivityLevel,
                       hint: Text("Choose Activity Level"),
@@ -208,6 +213,10 @@ class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
                       onChanged: (value) {
                         setState(() {
                           selectedActivityLevel = value;
+                          // Reset calculations if activity level changes
+                          maintenanceCalories = null;
+                          lowerBound = null;
+                          upperBound = null;
                         });
                       },
                     ),
@@ -216,52 +225,50 @@ class _MaintenanceCalorieScreenState extends State<MaintenanceCalorieScreen> {
                       onPressed: _calculateFinalCalories,
                       child: Text("Calculate Maintenance Calories"),
                     ),
-                    SizedBox(height: 20),
-                    if (maintenanceCalories != null)
-                      Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  "Final Maintenance Calories:",
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                SizedBox(height: 5),
-                                Text(
-                                  "${lowerBound!.toStringAsFixed(2)} - ${upperBound!.toStringAsFixed(2)} kcal",
-                                  style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue.shade800),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => GoalSelectionScreen(
-                                    maintenanceCalories: maintenanceCalories!,
-                                    bodyWeight: userWeight!,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Text("Next"),
-                          ),
-                        ],
+                    if (maintenanceCalories != null) ...[
+                      SizedBox(height: 30),
+                      Text(
+                        'Your Maintenance Calories:',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green),
                       ),
+                      SizedBox(height: 10),
+                      Text(
+                        '${maintenanceCalories!.toStringAsFixed(2)} kcal',
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Daily Range: ${lowerBound!.toStringAsFixed(2)} - ${upperBound!.toStringAsFixed(2)} kcal',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      SizedBox(height: 30),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 30, vertical: 15),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GoalSelectionScreen(
+                                maintenanceCalories: maintenanceCalories!,
+                                bodyWeight: userWeight ?? 0.0,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Continue to Goals',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    ]
                   ],
                 ),
               ),

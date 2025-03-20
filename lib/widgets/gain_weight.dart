@@ -10,15 +10,14 @@ class GainWeightScreen extends StatefulWidget {
 class _GainWeightScreenState extends State<GainWeightScreen> {
   final TextEditingController _goalWeightController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
-  final TextEditingController _maintenanceCaloriesController =
-      TextEditingController();
 
   double? dailyCaloriesSurplus;
   double? dailyProtein;
-  double? finalGoalWeight;
   double? finalDailyCalorieGoal;
+  double? currentWeight;
+  double? targetWeight;
+  double? maintenanceCalories;
   bool isLoading = true;
-
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
@@ -29,66 +28,84 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
 
   Future<void> _fetchPreviousData() async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         setState(() => isLoading = false);
         _showSnackbar("User not logged in.");
         return;
       }
 
-      DocumentSnapshot userDoc =
-          await _firestore.collection("users").doc(user.uid).get();
-      if (!userDoc.exists || userDoc.data() == null) {
-        setState(() => isLoading = false);
-        return;
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        currentWeight = (userDoc.data()!['weight'] as num?)?.toDouble();
       }
 
-      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+      final maintenanceDoc = await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("maintenance_data")
+          .doc("maintenance")
+          .get();
 
-      setState(() {
+      maintenanceCalories = maintenanceDoc.exists
+          ? (maintenanceDoc["maintenanceCalories"] as num?)?.toDouble()
+          : null;
+
+      final goalsSnapshot = await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("gain_weight_goals")
+          .orderBy("timestamp", descending: true)
+          .limit(1)
+          .get();
+
+      if (goalsSnapshot.docs.isNotEmpty) {
+        final data = goalsSnapshot.docs.first.data();
+
         _goalWeightController.text = data["goalWeight"]?.toString() ?? "";
         _durationController.text = data["goalDuration"]?.toString() ?? "";
-        _maintenanceCaloriesController.text =
-            data["maintenanceCalories"]?.toString() ?? "";
+
         dailyCaloriesSurplus = (data["dailyCalorieSurplus"] ?? 0).toDouble();
         dailyProtein = (data["dailyProteinIntake"] ?? 0).toDouble();
-        finalGoalWeight = (data["finalGoalWeight"] ?? 0).toDouble();
         finalDailyCalorieGoal = (data["finalDailyCalorieGoal"] ?? 0).toDouble();
-        isLoading = false;
-      });
+        targetWeight = (data["targetWeight"] ?? 0).toDouble();
+      }
 
-      _showSnackbar("Previous goal data loaded successfully!");
+      setState(() => isLoading = false);
     } catch (e) {
       setState(() => isLoading = false);
-      _showSnackbar("Error fetching previous data.");
+      _showSnackbar("Error fetching data: ${e.toString()}");
     }
   }
 
   Future<void> _calculateGainGoal() async {
     try {
-      double? goalWeight = double.tryParse(_goalWeightController.text);
-      int? months = int.tryParse(_durationController.text);
-      double? maintenanceCalories =
-          double.tryParse(_maintenanceCaloriesController.text);
+      final goalWeight = double.tryParse(_goalWeightController.text);
+      final months = int.tryParse(_durationController.text);
 
-      if (goalWeight == null ||
-          months == null ||
-          months <= 0 ||
-          maintenanceCalories == null) {
+      if (goalWeight == null || months == null || months <= 0) {
         _showSnackbar("Please enter valid values.");
         return;
       }
 
-      // Assuming 7700 kcal = 1kg gain
-      double totalExtraCalories = goalWeight * 7700;
-      double dailyExtraCalories = totalExtraCalories / (months * 30);
+      if (currentWeight == null) {
+        _showSnackbar("Error: Current weight not found.");
+        return;
+      }
 
-      // Protein intake calculation (2.2g per kg)
-      double dailyProteinIntake = goalWeight * 2.2;
+      if (goalWeight <= currentWeight!) {
+        _showSnackbar(
+            "Target weight must be greater than your current weight.");
+        return;
+      }
 
-      // Final calorie intake goal
-      double calculatedFinalDailyCalorieGoal =
-          maintenanceCalories + dailyExtraCalories;
+      targetWeight = goalWeight;
+
+      final totalExtraCalories = (targetWeight! - currentWeight!) * 7700;
+      final dailyExtraCalories = totalExtraCalories / (months * 30);
+      final dailyProteinIntake = targetWeight! * 2.2;
+      final calculatedFinalDailyCalorieGoal =
+          maintenanceCalories! + dailyExtraCalories;
 
       setState(() {
         dailyCaloriesSurplus = dailyExtraCalories;
@@ -96,31 +113,52 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
         finalDailyCalorieGoal = calculatedFinalDailyCalorieGoal;
       });
 
-      await _storeData(goalWeight, months, dailyExtraCalories,
-          dailyProteinIntake, calculatedFinalDailyCalorieGoal);
+      await _storeData(
+        goalWeight,
+        months,
+        dailyExtraCalories,
+        dailyProteinIntake,
+        calculatedFinalDailyCalorieGoal,
+        currentWeight!,
+        targetWeight!,
+      );
     } catch (e) {
-      _showSnackbar("Error calculating goal.");
+      _showSnackbar("Calculation error: ${e.toString()}");
     }
   }
 
-  Future<void> _storeData(double goalWeight, int months, double dailyCalories,
-      double dailyProtein, double finalCalorieGoal) async {
+  Future<void> _storeData(
+    double goalWeight,
+    int months,
+    double dailyCalories,
+    double dailyProtein,
+    double finalCalorieGoal,
+    double currentWeight,
+    double targetWeight,
+  ) async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await _firestore.collection("users").doc(user.uid).set({
-        "gain_goalWeight": goalWeight,
-        "gain_duration": months,
-        "gain_calorieGoal": finalCalorieGoal,
-        "gain_proteinGoal": dailyProtein,
-        "last_goal_type": "gain", // Track last used goal type
-        "goal_set_date": FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await _firestore
+          .collection("users")
+          .doc(user.uid)
+          .collection("gain_weight_goals")
+          .add({
+        "goalWeight": goalWeight,
+        "goalDuration": months,
+        "dailyCalorieSurplus": dailyCalories,
+        "dailyProteinIntake": dailyProtein,
+        "finalDailyCalorieGoal": finalCalorieGoal,
+        "currentWeight": currentWeight,
+        "targetWeight": targetWeight,
+        "maintenanceCalories": maintenanceCalories,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
 
-      _showSnackbar("Goal data saved successfully!");
+      _showSnackbar("Goal saved successfully!");
     } catch (e) {
-      _showSnackbar("Error saving goal data.");
+      _showSnackbar("Save failed: ${e.toString()}");
     }
   }
 
@@ -132,56 +170,108 @@ class _GainWeightScreenState extends State<GainWeightScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Gain Weight")),
+      appBar: AppBar(title: Text("Gain Weight Plan")),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: ListView(
                 children: [
                   Text(
-                      "Enter your weight gain goal (kg), duration (months), and maintenance calories:",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center),
+                    "Create Your Weight Gain Plan",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
                   SizedBox(height: 20),
-                  TextField(
+                  _buildInputField(
                     controller: _goalWeightController,
-                    keyboardType: TextInputType.number,
-                    decoration:
-                        InputDecoration(labelText: "Target weight gain (kg)"),
+                    label: "Target Weight (kg)",
+                    hint: "Enter desired weight",
                   ),
-                  SizedBox(height: 10),
-                  TextField(
+                  _buildInputField(
                     controller: _durationController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: "Duration (months)"),
+                    label: "Duration (months)",
+                    hint: "Enter timeline in months",
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _calculateGainGoal,
-                    child: Text("Calculate Daily Goals"),
+                    child: Text("Calculate Plan"),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                    ),
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 30),
                   if (dailyCaloriesSurplus != null &&
                       dailyProtein != null &&
                       finalDailyCalorieGoal != null)
-                    Column(
-                      children: [
-                        Text(
-                          "Daily Calorie Surplus: ${dailyCaloriesSurplus!.toStringAsFixed(2)} kcal\n"
-                          "Final Daily Calorie Goal: ${finalDailyCalorieGoal!.toStringAsFixed(2)} kcal\n"
-                          "Daily Protein Intake: ${dailyProtein!.toStringAsFixed(2)} g",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                    _buildResultsCard(),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: OutlineInputBorder(),
+          filled: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsCard() {
+    return Card(
+      elevation: 5,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Text(
+              "Your Daily Targets",
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue),
+            ),
+            SizedBox(height: 15),
+            _buildResultRow("Calorie Surplus:",
+                "${dailyCaloriesSurplus!.toStringAsFixed(1)} kcal"),
+            _buildResultRow("Total Daily Calories:",
+                "${finalDailyCalorieGoal!.toStringAsFixed(1)} kcal"),
+            _buildResultRow(
+                "Protein Intake:", "${dailyProtein!.toStringAsFixed(1)} g"),
+            _buildResultRow(
+                "Target Weight:", "${targetWeight!.toStringAsFixed(1)} kg"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 16)),
+          Text(value,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }
