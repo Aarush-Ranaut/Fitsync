@@ -53,6 +53,12 @@ class _CalorieTrackerState extends State<CalorieTracker> {
   Future<void> _fetchDailyGoals() async {
     if (userId == null) return;
 
+    // Clear previous goals while loading
+    setState(() {
+      dailyGoal = 0;
+      dailyProteinGoal = 0;
+    });
+
     // First try to get goal for selected date
     DocumentSnapshot dateGoalDoc = await _firestore
         .collection('users')
@@ -392,7 +398,9 @@ class _CalorieTrackerState extends State<CalorieTracker> {
       setState(() {
         selectedDate = DateFormat('yyyy-MM-dd').format(picked);
       });
-      _fetchFoodEntries();
+      // Refresh both goals and food entries when date changes
+      await _fetchDailyGoals();
+      await _fetchFoodEntries();
     }
   }
 
@@ -427,7 +435,11 @@ class _CalorieTrackerState extends State<CalorieTracker> {
                     MaterialPageRoute(
                       builder: (context) => MaintenanceCalorieScreen(),
                     ),
-                  ).then((_) => _fetchDailyGoals());
+                  ).then((_) async {
+                    // Force refresh after returning
+                    await _fetchDailyGoals();
+                    await _fetchFoodEntries();
+                  });
                 },
                 child: Text('Calculate Automatically'),
                 style: ElevatedButton.styleFrom(
