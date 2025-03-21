@@ -69,9 +69,6 @@ class _AIIntegrationState extends State<AIIntegration> {
 
   Future<void> _fetchUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('initial_message_sent') ?? false) return;
-
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
@@ -85,21 +82,19 @@ class _AIIntegrationState extends State<AIIntegration> {
             weight = userDoc['weight']?.toString() ?? 'unknown';
           });
 
-          _updateChatSession(); // Update chat with new stats
+          _updateChatSession();
 
-          final greeting =
-              "Hi ${userDoc['firstName'] ?? ''}, I'm your fitness assistant. "
-              "Your stats: $height cm, $weight kg. How can I help today?";
+          // Check if initial message needs to be sent
+          QuerySnapshot chatSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('AI_chats')
+              .limit(1)
+              .get();
 
-          setState(() {
-            _messages.add({
-              "sender": "AI",
-              "message": greeting,
-              "timestamp": DateTime.now()
-            });
-          });
-          await _saveMessages();
-          prefs.setBool('initial_message_sent', true);
+          if (chatSnapshot.docs.isEmpty) {
+            await _sendGreeting();
+          }
         }
       }
     } catch (e) {
@@ -107,21 +102,71 @@ class _AIIntegrationState extends State<AIIntegration> {
     }
   }
 
-  Future<void> _loadPreviousMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedMessages = prefs.getStringList('chat_messages') ?? [];
+  Future<void> _sendGreeting() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-    setState(() {
-      _messages.clear();
-      _messages.addAll(savedMessages.map((msg) {
-        final parts = msg.split('|');
-        return {
-          "sender": parts[0],
-          "message": parts[1],
-          "timestamp": DateTime.parse(parts[2])
-        };
-      }));
-    });
+        if (userDoc.exists) {
+          final greeting =
+              "Hi ${userDoc['firstName'] ?? ''}, I'm your fitness assistant. "
+              "Your stats: $height cm, $weight kg. How can I help today?";
+
+          await _addMessageToFirestore('AI', greeting);
+          setState(() {
+            _messages.add({
+              "sender": "AI",
+              "message": greeting,
+              "timestamp": DateTime.now()
+            });
+          });
+        }
+      }
+    } catch (e) {
+      _showError("Error sending greeting: $e");
+    }
+  }
+
+  Future<void> _addMessageToFirestore(String sender, String message) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('AI_chats')
+          .add({
+        'sender': sender,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> _loadPreviousMessages() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('AI_chats')
+          .orderBy('timestamp', descending: false)
+          .get();
+
+      setState(() {
+        _messages.clear();
+        _messages.addAll(querySnapshot.docs.map((doc) {
+          return {
+            "sender": doc['sender'],
+            "message": doc['message'],
+            "timestamp": (doc['timestamp'] as Timestamp).toDate(),
+          };
+        }));
+      });
+    }
   }
 
   Future<void> _saveMessages() async {
@@ -137,6 +182,8 @@ class _AIIntegrationState extends State<AIIntegration> {
     final message = _userMessageController.text.trim();
     if (message.isEmpty) return;
 
+    await _addMessageToFirestore('User', message);
+
     setState(() {
       _messages.add(
           {"sender": "User", "message": message, "timestamp": DateTime.now()});
@@ -144,7 +191,6 @@ class _AIIntegrationState extends State<AIIntegration> {
       _stopGenerating = false;
     });
     _userMessageController.clear();
-    unawaited(_saveMessages());
 
     try {
       final response = await _chat?.sendMessage(gpt.Content.text(message));
@@ -179,7 +225,7 @@ class _AIIntegrationState extends State<AIIntegration> {
       });
       if (i % 5 == 0) _scrollDown();
     }
-    await _saveMessages();
+    await _addMessageToFirestore('AI', text);
   }
 
   void _scrollDown() {
@@ -307,7 +353,7 @@ class _AIIntegrationState extends State<AIIntegration> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(65),
+          preferredSize: const Size.fromHeight(75),
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(15),
@@ -317,59 +363,63 @@ class _AIIntegrationState extends State<AIIntegration> {
               elevation: 8,
               shadowColor: Colors.black.withOpacity(0.5),
               centerTitle: true,
-              title: RichText(
-                text: TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: 'Fit',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28,
-                        letterSpacing: 1.2,
+              title: Padding(
+                padding:
+                    const EdgeInsets.only(top: 12), // Added top padding here
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(
+                        text: 'Fit',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    const TextSpan(
-                      text: 'Sync ',
-                      style: TextStyle(
-                        color: Color(0xFF77CF13),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28,
-                        letterSpacing: 1.2,
+                      const TextSpan(
+                        text: 'Sync ',
+                        style: TextStyle(
+                          color: Color(0xFF77CF13),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: Transform.translate(
-                        offset: const Offset(
-                            0.0, -3.5), // Adjust this value as needed
-                        child: ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [
-                              Colors.red,
-                              Colors.orange,
-                              Colors.yellow,
-                              Colors.green,
-                              Colors.blue,
-                              Colors.indigo,
-                              Colors.purple,
-                            ],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ).createShader(bounds),
-                          blendMode: BlendMode.srcIn,
-                          child: const Text(
-                            'AI',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Transform.translate(
+                          offset: const Offset(
+                              0.0, -3.5), // Adjust this value as needed
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                Colors.red,
+                                Colors.orange,
+                                Colors.yellow,
+                                Colors.green,
+                                Colors.blue,
+                                Colors.indigo,
+                                Colors.purple,
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ).createShader(bounds),
+                            blendMode: BlendMode.srcIn,
+                            child: const Text(
+                              'AI',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               backgroundColor: Colors.black,
@@ -497,11 +547,23 @@ class _AIIntegrationState extends State<AIIntegration> {
   }
 
   void _clearMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('chat_messages');
-    await prefs.setBool('initial_message_sent', false);
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      CollectionReference chats = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('AI_chats');
+
+      QuerySnapshot snapshot = await chats.get();
+      for (DocumentSnapshot doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+
     setState(() => _messages.clear());
-    await _fetchUserData();
+    await _sendGreeting(); // Add greeting after clearing
   }
 
   void _showError(String message) {
