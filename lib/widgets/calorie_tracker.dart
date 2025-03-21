@@ -599,12 +599,9 @@ class _CalorieTrackerState extends State<CalorieTracker> {
                               title: Text(food['foodName']),
                               // In the ListView.builder itemBuilder:
                               subtitle: Text(
-                                '${food['grams']}g - ${food['calories']} cal' +
-                                    (food['protein'] != null
-                                        ? '\nProtein: ${(food['protein'] as double).toStringAsFixed(2)}g, '
-                                            'Fat: ${(food['fat'] as double).toStringAsFixed(2)}g, '
-                                            'Carbs: ${(food['carbs'] as double).toStringAsFixed(2)}g'
-                                        : ''),
+                                '${food['grams']}g - ${food['calories']} cal${food['protein'] != null ? '\nProtein: ${(food['protein'] as double).toStringAsFixed(2)}g, '
+                                    'Fat: ${(food['fat'] as double).toStringAsFixed(2)}g, '
+                                    'Carbs: ${(food['carbs'] as double).toStringAsFixed(2)}g' : ''}',
                               ),
                               onTap: () => _editFoodEntry(food),
                               trailing: IconButton(
