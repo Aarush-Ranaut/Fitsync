@@ -8,16 +8,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:intl/intl.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 void main() {
   const apiKey = 'AIzaSyB1FflSFQMelsT-Ra27xsPLAlBjfsW7uLU';
 
   gemini.Gemini.init(apiKey: apiKey);
 
   runApp(MaterialApp(
+    navigatorObservers: [routeObserver],
     theme: ThemeData.dark().copyWith(
       scaffoldBackgroundColor: Colors.black,
       textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.white)),
-    ), // Added missing closing parenthesis here
+    ),
     home: AIIntegration(apiKey: apiKey),
   ));
 }
@@ -29,7 +32,7 @@ class AIIntegration extends StatefulWidget {
   _AIIntegrationState createState() => _AIIntegrationState();
 }
 
-class _AIIntegrationState extends State<AIIntegration> {
+class _AIIntegrationState extends State<AIIntegration> with RouteAware {
   gpt.GenerativeModel? _model;
   gpt.ChatSession? _chat;
   bool _stopGenerating = false;
@@ -48,6 +51,31 @@ class _AIIntegrationState extends State<AIIntegration> {
     super.initState();
     _initializeModel();
     _loadPreviousMessages().then((_) => _fetchUserData());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPush() {
+    _fetchUserData();
+  }
+
+  @override
+  void didPopNext() {
+    _fetchUserData();
   }
 
   void _initializeModel() {
@@ -77,28 +105,71 @@ class _AIIntegrationState extends State<AIIntegration> {
             .get();
 
         if (userDoc.exists) {
-          setState(() {
-            height = userDoc['height']?.toString() ?? 'unknown';
-            weight = userDoc['weight']?.toString() ?? 'unknown';
-          });
+          final newHeight = userDoc['height']?.toString() ?? 'unknown';
+          final newWeight = userDoc['weight']?.toString() ?? 'unknown';
+          final firstName = userDoc['firstName']?.toString() ?? '';
 
-          _updateChatSession();
-
-          // Check if initial message needs to be sent
-          QuerySnapshot chatSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('AI_chats')
-              .limit(1)
-              .get();
-
-          if (chatSnapshot.docs.isEmpty) {
-            await _sendGreeting();
+          if (newHeight != height || newWeight != weight) {
+            setState(() {
+              height = newHeight;
+              weight = newWeight;
+            });
+            _updateChatSession();
+            await _updateGreeting(firstName);
           }
         }
       }
     } catch (e) {
       _showError("Error fetching data: $e");
+    }
+  }
+
+  Future<void> _updateGreeting(String firstName) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Find existing greeting
+        QuerySnapshot greetingSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('AI_chats')
+            .where('isGreeting', isEqualTo: true)
+            .get();
+
+        final newGreeting = "Hi $firstName, I'm your fitness assistant. "
+            "Your stats: $height cm, $weight kg. How can I help today?";
+
+        if (greetingSnapshot.docs.isNotEmpty) {
+          // Update existing greeting
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('AI_chats')
+              .doc(greetingSnapshot.docs.first.id)
+              .update({'message': newGreeting});
+
+          setState(() {
+            final index =
+                _messages.indexWhere((msg) => msg['isGreeting'] == true);
+            if (index != -1) {
+              _messages[index]['message'] = newGreeting;
+            }
+          });
+        } else {
+          // Send new greeting if none exists
+          await _addMessageToFirestore('AI', newGreeting, isGreeting: true);
+          setState(() {
+            _messages.add({
+              "sender": "AI",
+              "message": newGreeting,
+              "timestamp": DateTime.now(),
+              "isGreeting": true
+            });
+          });
+        }
+      }
+    } catch (e) {
+      _showError("Error updating greeting: $e");
     }
   }
 
@@ -112,16 +183,17 @@ class _AIIntegrationState extends State<AIIntegration> {
             .get();
 
         if (userDoc.exists) {
-          final greeting =
-              "Hi ${userDoc['firstName'] ?? ''}, I'm your fitness assistant. "
+          final firstName = userDoc['firstName']?.toString() ?? '';
+          final greeting = "Hi $firstName, I'm your fitness assistant. "
               "Your stats: $height cm, $weight kg. How can I help today?";
 
-          await _addMessageToFirestore('AI', greeting);
+          await _addMessageToFirestore('AI', greeting, isGreeting: true);
           setState(() {
             _messages.add({
               "sender": "AI",
               "message": greeting,
-              "timestamp": DateTime.now()
+              "timestamp": DateTime.now(),
+              "isGreeting": true
             });
           });
         }
@@ -131,7 +203,8 @@ class _AIIntegrationState extends State<AIIntegration> {
     }
   }
 
-  Future<void> _addMessageToFirestore(String sender, String message) async {
+  Future<void> _addMessageToFirestore(String sender, String message,
+      {bool isGreeting = false}) async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await FirebaseFirestore.instance
@@ -141,6 +214,7 @@ class _AIIntegrationState extends State<AIIntegration> {
           .add({
         'sender': sender,
         'message': message,
+        'isGreeting': isGreeting,
         'timestamp': FieldValue.serverTimestamp(),
       });
     }
@@ -160,8 +234,10 @@ class _AIIntegrationState extends State<AIIntegration> {
         _messages.clear();
         _messages.addAll(querySnapshot.docs.map((doc) {
           return {
+            "id": doc.id,
             "sender": doc['sender'],
             "message": doc['message'],
+            "isGreeting": doc['isGreeting'] ?? false,
             "timestamp": (doc['timestamp'] as Timestamp).toDate(),
           };
         }));
