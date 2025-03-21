@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'exercise_selection.dart';
 import 'food_entry_screen.dart';
 import 'maintenance_calorie_screen.dart';
 
@@ -511,110 +512,121 @@ class _CalorieTrackerState extends State<CalorieTracker> {
     double progressProtein =
         dailyProteinGoal > 0 ? totalProtein / dailyProteinGoal : 0;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Calorie Tracker'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: () => _selectDate(context),
-            tooltip: 'Select Date (History)',
-          ),
-        ],
-      ),
-      body: userId == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Display circular progress indicators for calories and protein.
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildCircularProgressIndicator(
-                        label: 'Calories',
-                        progress: progressCalories,
-                        total: totalCalories.toString(),
-                        goal: dailyGoal.toString(),
-                      ),
-                      _buildCircularProgressIndicator(
-                        label: 'Protein (g)',
-                        progress: progressProtein,
-                        total: totalProtein.toStringAsFixed(0),
-                        goal: dailyProteinGoal.toString(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Display total fat and carbs.
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Column(
-                        children: [
-                          const Text('Fat (g)',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text(totalFat.toStringAsFixed(0)),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          const Text('Carbs (g)',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text(totalCarbs.toStringAsFixed(0)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                      onPressed: _showGoalOptions,
-                      child: const Text('Edit Daily Goals')),
-                  const SizedBox(height: 10),
-                  Text('Selected Date: $selectedDate',
-                      style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: foodEntries.length,
-                      itemBuilder: (context, index) {
-                        final food = foodEntries[index];
-                        return Card(
-                          child: ListTile(
-                            title: Text(food['foodName']),
-                            subtitle: Text(
-                              '${food['grams']}g - ${food['calories']} cal' +
-                                  (food['protein'] != null
-                                      ? '\nProtein: ${food['protein']}g, Fat: ${food['fat']}g, Carbs: ${food['carbs']}g'
-                                      : ''),
-                            ),
-                            onTap: () => _editFoodEntry(food),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                _deleteFoodEntry(food['id']);
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Text('Total Calories: $totalCalories / $dailyGoal',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to ExerciseSelectionScreen and remove all previous routes
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => ExerciseSelectionScreen()),
+          (Route<dynamic> route) => false,
+        );
+        return false; // Prevent default back behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Daily Calorie Tracker'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: () => _selectDate(context),
+              tooltip: 'Select Date (History)',
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddFoodEntryDialog,
-        child: const Icon(Icons.add),
-        tooltip: 'Add Food Entry',
+          ],
+        ),
+        body: userId == null
+            ? const Center(child: CircularProgressIndicator())
+            : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Display circular progress indicators for calories and protein.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildCircularProgressIndicator(
+                          label: 'Calories',
+                          progress: progressCalories,
+                          total: totalCalories.toString(),
+                          goal: dailyGoal.toString(),
+                        ),
+                        _buildCircularProgressIndicator(
+                          label: 'Protein (g)',
+                          progress: progressProtein,
+                          total: totalProtein.toStringAsFixed(0),
+                          goal: dailyProteinGoal.toString(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Display total fat and carbs.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            const Text('Fat (g)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text(totalFat.toStringAsFixed(0)),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text('Carbs (g)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text(totalCarbs.toStringAsFixed(0)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                        onPressed: _showGoalOptions,
+                        child: const Text('Edit Daily Goals')),
+                    const SizedBox(height: 10),
+                    Text('Selected Date: $selectedDate',
+                        style: const TextStyle(fontSize: 16)),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: foodEntries.length,
+                        itemBuilder: (context, index) {
+                          final food = foodEntries[index];
+                          return Card(
+                            child: ListTile(
+                              title: Text(food['foodName']),
+                              subtitle: Text(
+                                '${food['grams']}g - ${food['calories']} cal' +
+                                    (food['protein'] != null
+                                        ? '\nProtein: ${food['protein']}g, Fat: ${food['fat']}g, Carbs: ${food['carbs']}g'
+                                        : ''),
+                              ),
+                              onTap: () => _editFoodEntry(food),
+                              trailing: IconButton(
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  _deleteFoodEntry(food['id']);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Text('Total Calories: $totalCalories / $dailyGoal',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _showAddFoodEntryDialog,
+          child: const Icon(Icons.add),
+          tooltip: 'Add Food Entry',
+        ),
       ),
     );
   }
