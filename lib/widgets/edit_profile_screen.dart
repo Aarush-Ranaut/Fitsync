@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -110,18 +111,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final String height = _heightController.text.trim();
     final String weight = _weightController.text.trim();
     final String age = _ageController.text.trim();
-    final String? gender = _selectedGender; // Get selected gender
+    final String? gender = _selectedGender;
 
+    // Validate all fields including weight format
     if (firstName.isEmpty ||
         lastName.isEmpty ||
         height.isEmpty ||
         weight.isEmpty ||
         age.isEmpty ||
         _birthDate == null ||
-        gender == null || // Validate gender
-        gender.isEmpty) {
+        gender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("All fields are required")),
+      );
+      return;
+    }
+
+    // Validate weight is a valid double
+    final double? parsedWeight = double.tryParse(weight);
+    if (parsedWeight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid weight format")),
       );
       return;
     }
@@ -131,24 +141,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'firstName': firstName,
         'lastName': lastName,
         'height': int.tryParse(height),
-        'weight': int.tryParse(weight),
+        'weight': parsedWeight, // Save as double
         'age': int.tryParse(age),
-        'birthDate':
-            _birthDate!.toIso8601String(), // Save birth date as ISO string
+        'birthDate': _birthDate!.toIso8601String(),
         'profileImage': _profilePicture ?? '',
-        'gender': gender, // Save gender
+        'gender': gender,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Data saved successfully")),
       );
 
-      // Redirect to HomeScreen after saving
+      // Navigate back to HomeScreen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -317,7 +324,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
               TextField(
                 controller: _weightController,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(
+                    decimal: true), // Allow decimal input
+                inputFormatters: [
+                  DecimalTextInputFormatter(), // Apply custom formatter
+                ],
                 decoration: InputDecoration(
                   labelText: 'Weight (kg)',
                   labelStyle: const TextStyle(color: Colors.white70),
@@ -446,5 +457,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+}
+
+class DecimalTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Allow empty input
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    // Regex to allow digits with optional decimal and up to one decimal place
+    final RegExp regExp = RegExp(r'^\d*\.?\d{0,1}$');
+    if (regExp.hasMatch(newValue.text)) {
+      return newValue;
+    }
+
+    // Return old value if new value is invalid
+    return oldValue;
   }
 }
