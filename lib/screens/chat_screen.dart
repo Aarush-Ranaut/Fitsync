@@ -302,6 +302,8 @@
 //     );
 //   }
 // }
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -327,6 +329,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _hasJoined = false;
   bool _isCreator = false;
+  Timer? _timer; // Add this line
 
   // Define theme colors
   final Color _primaryGreen = const Color(0xFF2ECC71);
@@ -341,6 +344,16 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _chatService = ChatService(communityId: widget.communityId);
     _checkIfJoined();
+    // Add periodic timer to trigger rebuild every minute
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      setState(() {}); // Trigger rebuild to re-evaluate message time
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer to avoid memory leaks
+    super.dispose();
   }
 
   @override
