@@ -66,6 +66,7 @@ dependencies:
   agora_rtc_engine: ^6.5.1
   flutter_typeahead: ^5.2.0
   google_fonts: ^6.2.1
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

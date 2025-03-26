@@ -14,7 +14,7 @@ class OCRProcessor extends StatefulWidget {
 class _OCRProcessorState extends State<OCRProcessor> {
   final TextRecognizer textRecognizer = TextRecognizer();
   final String apiUrl =
-      "http://10.110.6.118:5050/process_text"; // Flask server
+      "http://192.168.206.58:5050/process_text"; // Flask server
   File? _selectedImage;
   String _extractedText = "Extracted text will appear here.";
   String _normalIngredients = "Normal ingredients will appear here.";
