@@ -60,60 +60,78 @@ class CalorieCalculator {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Fetches the authenticated user's BMR and weight from Firestore.
+  // Modified fetchUserData method
   Future<Map<String, dynamic>?> fetchUserData() async {
     try {
       User? user = _auth.currentUser;
-      if (user == null) {
-        print("User is not authenticated");
-        return null;
-      }
+      if (user == null) return null;
 
-      String userId = user.uid;
       DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(userId).get();
+          await _firestore.collection('users').doc(user.uid).get();
 
-      if (!userDoc.exists) {
-        print("User data not found");
+      if (!userDoc.exists) return null;
+
+      Map<String, dynamic>? data = userDoc.data() as Map<String, dynamic>?;
+      if (data == null) return null;
+
+      // Parse birth date from Firestore
+      DateTime? birthDate;
+      if (data['birthDate'] != null) {
+        if (data['birthDate'] is Timestamp) {
+          birthDate = (data['birthDate'] as Timestamp).toDate();
+        } else {
+          birthDate = DateTime.parse(data['birthDate'].toString());
+        }
+      }
+
+      // Calculate age from birth date
+      int age = 0;
+      if (birthDate != null) {
+        final now = DateTime.now();
+        age = now.year - birthDate.year;
+        if (now.month < birthDate.month ||
+            (now.month == birthDate.month && now.day < birthDate.day)) {
+          age--;
+        }
+      }
+
+      // Rest of the data parsing
+      double weight = _safeConvertToDouble(data['weight']);
+      double height = _safeConvertToDouble(data['height']);
+      String gender = data['gender']?.toString().toLowerCase() ?? '';
+
+      if (weight <= 0 || height <= 0 || age <= 0 || gender.isEmpty) {
+        print(
+            "Invalid data - Weight: $weight, Height: $height, Age: $age, Gender: $gender");
         return null;
       }
 
-      Map<String, dynamic>? userData = userDoc.data() as Map<String, dynamic>?;
+      // BMR Calculation
+      double bmr = gender == 'male'
+          ? 10 * weight + 6.25 * height - 5 * age + 5
+          : 10 * weight + 6.25 * height - 5 * age - 161;
 
-      if (userData == null) {
-        print("User data is null");
-        return null;
-      }
-
-      // Ensure all necessary fields exist before proceeding
-      double? weight = (userData['weight'] as num?)?.toDouble();
-      double? height = (userData['height'] as num?)?.toDouble();
-      int? age = userData['age'];
-      String? gender = userData['gender'];
-
-      if (weight == null || height == null || age == null || gender == null) {
-        print("Missing required data for calorie calculation.");
-        return null;
-      }
-
-      // Calculate BMR based on gender
-      double bmr;
-      if (gender.toLowerCase() == 'male') {
-        bmr = 10 * weight + 6.25 * height - 5 * age + 5;
-      } else if (gender.toLowerCase() == 'female') {
-        bmr = 10 * weight + 6.25 * height - 5 * age - 161;
-      } else {
-        print("Invalid gender data");
-        return null;
-      }
-
-      return {
-        'bmr': bmr,
-        'weight': weight,
-      };
+      return {'bmr': bmr, 'weight': weight, 'age': age};
     } catch (e) {
-      print("Error fetching user data: $e");
+      print("Error in fetchUserData: $e");
       return null;
     }
+  }
+
+  double _safeConvertToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _safeConvertToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   /// Stores maintenance calorie data securely in Firestore under the authenticated user's document.
