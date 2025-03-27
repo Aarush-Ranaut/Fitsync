@@ -6,7 +6,9 @@
                 "${workspaceFolder}/**",
                 "C:/flutter/src",
                 "C:/flutter/src/flutter/bin/cache/artifacts/engine/windows-x64",
-                "C:/flutter/src/flutter/bin/cache/artifacts/engine/windows-x64/cpp_client_wrapper/include"
+                "C:/flutter/src/flutter/bin/cache/artifacts/engine/windows-x64/cpp_client_wrapper/include",
+                "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/**",
+                "C:/Program Files (x86)/Windows Kits/10/Include/**"
             ],
             "defines": [
                 "_DEBUG",
@@ -22,3 +24,5 @@
     ],
     "version": 4
 }
+
+

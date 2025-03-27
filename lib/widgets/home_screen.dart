@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _navigateToEditProfile() {
+  void _navigateToEditProfile(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     Navigator.push(
       context,
