@@ -6,12 +6,13 @@ import 'package:flutter_gemini/flutter_gemini.dart' as gemini;
 import 'package:google_generative_ai/google_generative_ai.dart' as gpt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:intl/intl.dart';
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() {
-  const apiKey =
-      'AIzaSyB1FflSFQMelsT-Ra27xsPLAlBjfsW7uLU'; // Replace with your actual Gemini API key
+  const apiKey = 'AIzaSyB1FflSFQMelsT-Ra27xsPLAlBjfsW7uLU';
 
-  /// Initialize Gemini
   gemini.Gemini.init(apiKey: apiKey);
 
   runApp(MaterialApp(
@@ -26,54 +27,76 @@ void main() {
 
 class AIIntegration extends StatefulWidget {
   final String apiKey;
-
   const AIIntegration({required this.apiKey, super.key});
-
   @override
   _AIIntegrationState createState() => _AIIntegrationState();
 }
 
-class _AIIntegrationState extends State<AIIntegration> {
-  late final gpt.GenerativeModel _model;
-  late final gpt.ChatSession _chat;
+class _AIIntegrationState extends State<AIIntegration> with RouteAware {
+  gpt.GenerativeModel? _model;
+  gpt.ChatSession? _chat;
+  bool _stopGenerating = false;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _userMessageController = TextEditingController();
   final FocusNode _textFieldFocus = FocusNode(debugLabel: 'TextField');
   bool _loading = false;
-  final List<Map<String, String>> _messages = [];
-  String _initialMessage = '';
+  final List<Map<String, dynamic>> _messages = [];
   String height = 'unknown';
   String weight = 'unknown';
   int responseCounter = 0;
+  DateTime? _previousDateTime;
 
   @override
   void initState() {
     super.initState();
-    _initializeChat(); // Initialize chat first
+    _initializeModel();
     _loadPreviousMessages().then((_) => _fetchUserData());
   }
 
-  void _initializeChat() {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPush() {
+    _fetchUserData();
+  }
+
+  @override
+  void didPopNext() {
+    _fetchUserData();
+  }
+
+  void _initializeModel() {
     _model = gpt.GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       apiKey: widget.apiKey,
     );
-    _chat = _model.startChat();
-    _chat.sendMessage(
-      gpt.Content.text(
-        "You are a smart workout assistant. Respond only to questions related to fitness, gym, workouts, diets, or health. Politely decline unrelated queries and answer in medium-length paragraphs. Remember the User height: $height cm, weight: $weight kg for tailored advice.",
-      ),
-    );
+    _updateChatSession();
+  }
+
+  void _updateChatSession() {
+    _chat = _model?.startChat();
+    _chat?.sendMessage(gpt.Content.text(
+        "You are a smart fitness assistant. Provide concise, actionable advice based on user's stats: "
+        "Height: $height cm, Weight: $weight kg. Keep responses brief (1-3 sentences) unless detailed explanations are needed. "
+        "Always calculate BMI and other metrics when asked using the provided stats. Format numbers clearly. "
+        "Politely decline non-fitness questions. Use simple language and bullet points when helpful."));
   }
 
   Future<void> _fetchUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final isInitialMessageSent =
-          prefs.getBool('initial_message_sent') ?? false;
-
-      if (isInitialMessageSent) return;
-
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
@@ -126,27 +149,74 @@ class _AIIntegrationState extends State<AIIntegration> {
               .update({'message': newGreeting});
 
           setState(() {
-            height = userDoc['height']?.toString() ?? 'unknown';
-            weight = userDoc['weight']?.toString() ?? 'unknown';
+            final index =
+                _messages.indexWhere((msg) => msg['isGreeting'] == true);
+            if (index != -1) {
+              _messages[index]['message'] = newGreeting;
+            }
           });
-
-          final firstName = userDoc['firstName'] ?? 'unknown';
-          final initialMessage =
-              "Hi $firstName, I am your personal smart workout assistant. I see that you are 18 years old, stand $height cm tall, and weigh $weight kg. How can I assist with your workout today?";
-
-          await _chat.sendMessage(gpt.Content.text(initialMessage));
-
+        } else {
+          // Send new greeting if none exists
+          await _addMessageToFirestore('AI', newGreeting, isGreeting: true);
           setState(() {
-            _initialMessage = initialMessage;
-            _messages.add({"sender": "AI", "message": _initialMessage});
+            _messages.add({
+              "sender": "AI",
+              "message": newGreeting,
+              "timestamp": DateTime.now(),
+              "isGreeting": true
+            });
           });
-
-          _saveMessages();
-          prefs.setBool('initial_message_sent', true);
         }
       }
     } catch (e) {
-      _showError("Error fetching user data: $e");
+      _showError("Error updating greeting: $e");
+    }
+  }
+
+  Future<void> _sendGreeting() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final firstName = userDoc['firstName']?.toString() ?? '';
+          final greeting = "Hi $firstName, I'm your fitness assistant. "
+              "Your stats: $height cm, $weight kg. How can I help today?";
+
+          await _addMessageToFirestore('AI', greeting, isGreeting: true);
+          setState(() {
+            _messages.add({
+              "sender": "AI",
+              "message": greeting,
+              "timestamp": DateTime.now(),
+              "isGreeting": true
+            });
+          });
+        }
+      }
+    } catch (e) {
+      _showError("Error sending greeting: $e");
+    }
+  }
+
+  Future<void> _addMessageToFirestore(String sender, String message,
+      {bool isGreeting = false}) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('AI_chats')
+          .add({
+        'sender': sender,
+        'message': message,
+        'isGreeting': isGreeting,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
     }
   }
 
@@ -160,20 +230,78 @@ class _AIIntegrationState extends State<AIIntegration> {
           .orderBy('timestamp', descending: false)
           .get();
 
-    setState(() {
-      _messages.clear();
-      _messages.addAll(savedMessages.map((msg) {
-        final parts = msg.split('|');
-        return {"sender": parts[0], "message": parts[1]};
-      }));
-    });
+      setState(() {
+        _messages.clear();
+        _messages.addAll(querySnapshot.docs.map((doc) {
+          return {
+            "id": doc.id,
+            "sender": doc['sender'],
+            "message": doc['message'],
+            "isGreeting": doc['isGreeting'] ?? false,
+            "timestamp": (doc['timestamp'] as Timestamp).toDate(),
+          };
+        }));
+      });
+    }
   }
 
   Future<void> _saveMessages() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedMessages =
-        _messages.map((msg) => "${msg['sender']}|${msg['message']}").toList();
+    final savedMessages = _messages
+        .map((msg) =>
+            "${msg['sender']}|${msg['message']}|${msg['timestamp'].toIso8601String()}")
+        .toList();
     await prefs.setStringList('chat_messages', savedMessages);
+  }
+
+  Future<void> _sendMessage() async {
+    final message = _userMessageController.text.trim();
+    if (message.isEmpty) return;
+
+    await _addMessageToFirestore('User', message);
+
+    setState(() {
+      _messages.add(
+          {"sender": "User", "message": message, "timestamp": DateTime.now()});
+      _loading = true;
+      _stopGenerating = false;
+    });
+    _userMessageController.clear();
+
+    try {
+      final response = await _chat?.sendMessage(gpt.Content.text(message));
+      if (response != null && response.text != null && !_stopGenerating) {
+        await _simulateTyping(response.text!);
+      }
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _simulateTyping(String text) async {
+    const speed = Duration(milliseconds: 30);
+    String displayed = '';
+
+    for (int i = 0; i < text.length; i++) {
+      if (_stopGenerating) break;
+      await Future.delayed(speed);
+      setState(() {
+        displayed += text[i];
+        if (_messages.last["sender"] == "AI") {
+          _messages.last["message"] = displayed;
+        } else {
+          _messages.add({
+            "sender": "AI",
+            "message": displayed,
+            "timestamp": DateTime.now()
+          });
+        }
+      });
+      if (i % 5 == 0) _scrollDown();
+    }
+    await _addMessageToFirestore('AI', text);
   }
 
   void _scrollDown() {
@@ -186,120 +314,82 @@ class _AIIntegrationState extends State<AIIntegration> {
     });
   }
 
-  Future<void> _sendMessage() async {
-    final userMessage = _userMessageController.text.trim();
-    if (userMessage.isEmpty) return;
-
-    setState(() {
-      _messages.add({"sender": "User", "message": "$userMessage"});
-      _loading = true;
-    });
-
-    _userMessageController.clear();
-    _saveMessages();
-
-    try {
-      responseCounter++;
-      if (responseCounter >= 5) {
-        await _chat.sendMessage(
-          gpt.Content.text(
-            "You are a smart workout assistant. Respond only to questions related to fitness, gym, workouts, diets, or health. Politely decline unrelated queries and answer in medium-length paragraphs. Remember the User height: $height cm, weight: $weight kg for tailored advice.",
-          ),
-        );
-        responseCounter = 0;
-      }
-
-      final response = await _chat.sendMessage(
-        gpt.Content.text(userMessage),
-      );
-
-      if (response.text != null) {
-        await _simulateTyping(response.text!);
-        _saveMessages();
-      }
-    } catch (error) {
-      _showError(error.toString());
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  void _clearMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('chat_messages');
-    await prefs.setBool('initial_message_sent', false);
-    setState(() {
-      _messages.clear();
-    });
-
-    await _fetchUserData();
-  }
-
-  void _showError(String message) {
-    FirebaseCrashlytics.instance.recordError(message, null); // Log error
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+  Widget _buildChatBubble(
+      BuildContext context, String message, bool isAI, DateTime dateTime) {
+    return Column(
+      children: [
+        if (_isNewDay(dateTime)) _buildDateHeader(dateTime),
+        Align(
+          alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            constraints: BoxConstraints(
+              maxWidth: 0.75 * MediaQuery.of(context).size.width,
             ),
-          ],
-        );
-      },
+            decoration: BoxDecoration(
+              gradient: isAI
+                  ? const LinearGradient(
+                      colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isAI ? null : Colors.grey[850],
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isAI ? 0 : 0),
+                topRight: Radius.circular(isAI ? 20 : 0),
+                bottomLeft: const Radius.circular(20),
+                bottomRight: const Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              message,
+              style: TextStyle(
+                color: isAI ? Colors.black87 : Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Future<void> _simulateTyping(String fullMessage) async {
-    const typingSpeed =
-        Duration(milliseconds: 28); // Adjusted for smoother typing
-    String displayedText = '';
-
-    for (int i = 0; i < fullMessage.length; i++) {
-      await Future.delayed(typingSpeed);
-
-      setState(() {
-        displayedText += fullMessage[i];
-        if (_messages.isNotEmpty && _messages.last["sender"] == "AI") {
-          _messages.last["message"] = displayedText;
-        } else {
-          _messages.add({"sender": "AI", "message": displayedText});
-        }
-      });
-
-      // Smooth scroll behavior
-      if (i % 5 == 0 || i == fullMessage.length - 1) {
-        _scrollDown();
-      }
+  bool _isNewDay(DateTime dateTime) {
+    if (_previousDateTime == null) {
+      _previousDateTime = dateTime;
+      return true;
     }
+    if (dateTime.year != _previousDateTime!.year ||
+        dateTime.month != _previousDateTime!.month ||
+        dateTime.day != _previousDateTime!.day) {
+      _previousDateTime = dateTime;
+      return true;
+    }
+    return false;
   }
 
-  Widget _buildMessage(String message, bool isAI) {
-    return Align(
-      alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isAI ? Colors.green : const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: isAI ? Radius.zero : const Radius.circular(12),
-            bottomRight: isAI ? const Radius.circular(12) : Radius.zero,
-          ),
-        ),
+  Widget _buildDateHeader(DateTime dateTime) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Center(
         child: Text(
-          message,
+          DateFormat('MMMM d, yyyy').format(dateTime),
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
+            color: Colors.grey,
+            fontSize: 14,
           ),
         ),
       ),
@@ -309,74 +399,103 @@ class _AIIntegrationState extends State<AIIntegration> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.greenAccent.withOpacity(0.3),
+            spreadRadius: 6,
+            blurRadius: 40,
+            offset: const Offset(0, 0),
+          ),
+          BoxShadow(
+            color: Colors.blueAccent.withOpacity(0.2),
+            spreadRadius: 4,
+            blurRadius: 25,
+            offset: const Offset(0, 0),
+          ),
+        ],
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 1.5,
           colors: [
-            Color.fromARGB(255, 14, 89, 17),
+            const Color(0xFF152238),
+            const Color(0xFF0B3D2E),
+            const Color(0xFF021C1E),
             Colors.black,
-            Colors.black,
-            Color.fromARGB(255, 14, 89, 17),
           ],
-          stops: [0.0, 0.4, 0.75, 1.0],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          stops: const [0.1, 0.4, 0.7, 1.0],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(75),
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(25),
-              bottomRight: Radius.circular(25),
+              bottomLeft: Radius.circular(15),
+              bottomRight: Radius.circular(15),
             ),
             child: AppBar(
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.5),
               centerTitle: true,
-              title: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Fit',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 30,
+              title: Padding(
+                padding:
+                    const EdgeInsets.only(top: 12), // Added top padding here
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(
+                        text: 'Fit',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    TextSpan(
-                      text: 'Sync ',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 30,
+                      const TextSpan(
+                        text: 'Sync ',
+                        style: TextStyle(
+                          color: Color(0xFF77CF13),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [
-                            Colors.red,
-                            Colors.orange,
-                            Colors.yellow,
-                            Colors.green,
-                            Colors.blue,
-                            Colors.deepPurpleAccent,
-                          ],
-                        ).createShader(bounds),
-                        child: Text(
-                          'AI',
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Transform.translate(
+                          offset: const Offset(
+                              0.0, -3.5), // Adjust this value as needed
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                Colors.red,
+                                Colors.orange,
+                                Colors.yellow,
+                                Colors.green,
+                                Colors.blue,
+                                Colors.indigo,
+                                Colors.purple,
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ).createShader(bounds),
+                            blendMode: BlendMode.srcIn,
+                            child: const Text(
+                              'AI',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               backgroundColor: Colors.black,
@@ -396,58 +515,146 @@ class _AIIntegrationState extends State<AIIntegration> {
         body: Column(
           children: [
             Expanded(
-              child: Container(
-                color: Colors.transparent,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: ListView.builder(
                   controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
                     final message = _messages[index];
                     final isAI = message["sender"] == "AI";
-                    return _buildMessage(message["message"]!, isAI);
+                    final timestamp = message["timestamp"] as DateTime;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        crossAxisAlignment: isAI
+                            ? CrossAxisAlignment.start
+                            : CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          _buildChatBubble(
+                              context, message["message"], isAI, timestamp),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),
             ),
-            Container(
-              color: Colors.transparent,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      autofocus: true,
-                      focusNode: _textFieldFocus,
-                      controller: _userMessageController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Ask any question',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        filled: true,
-                        fillColor: const Color(0xFF2A2A2A),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 20),
-                      ),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _loading
-                      ? const CircularProgressIndicator()
-                      : IconButton(
-                          onPressed: _sendMessage,
-                          icon: const Icon(Icons.send,
-                              color: Color.fromARGB(255, 119, 207, 19)),
-                        ),
-                ],
-              ),
-            ),
+            _buildChatInput(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildChatInput() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                autofocus: true,
+                focusNode: _textFieldFocus,
+                controller: _userMessageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Ask me anything...',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (_loading)
+              IconButton(
+                icon: const Icon(Icons.stop, color: Colors.red),
+                onPressed: () => setState(() => _stopGenerating = true),
+              )
+            else
+              GestureDetector(
+                onTap: _sendMessage,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  transform: Matrix4.translationValues(0, _loading ? -3 : 0, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF77CF13),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.5),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.send, color: Colors.black),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _clearMessages() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      CollectionReference chats = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('AI_chats');
+
+      QuerySnapshot snapshot = await chats.get();
+      for (DocumentSnapshot doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+
+    setState(() => _messages.clear());
+    await _sendGreeting(); // Add greeting after clearing
+  }
+
+  void _showError(String message) {
+    FirebaseCrashlytics.instance.recordError(message, null);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
