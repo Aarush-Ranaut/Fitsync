@@ -1,25 +1,276 @@
-// posture_camera_screen.dart
-import 'dart:async';
-import 'dart:typed_data';
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
+//LOADING MODEL FIRST THEN CALLING + OPTIMIZED + multiple exrercises + global variable for ip + Dynamic API + Manual Exposure
+// import 'dart:async';
+// import 'dart:convert';
+// import 'dart:typed_data';
+// import 'package:flutter/foundation.dart';
+// import 'package:flutter/material.dart';
+// import 'package:camera/camera.dart';
+// import 'package:dio/dio.dart';
 
-class PostureCameraScreen extends StatefulWidget {
-  const PostureCameraScreen({Key? key}) : super(key: key);
+// class PoseScreen extends StatefulWidget {
+//   final int exercise;
+//   PoseScreen({required this.exercise});
+
+//   @override
+//   _PoseScreenState createState() => _PoseScreenState();
+// }
+
+// class _PoseScreenState extends State<PoseScreen> {
+//   CameraController? _cameraController;
+//   List<CameraDescription>? cameras;
+//   bool isProcessing = false;
+//   String apiResponse = "Waiting for pose analysis...";
+//   bool isCameraEnabled = false;
+//   Timer? captureTimer;
+//   final int captureInterval = 2;
+//   final Dio dio = Dio();
+//   bool isModelLoaded = false;
+//   double _exposure = 0.0;
+//   double _minExposure = -2.0; // Set to detected min value
+//   double _maxExposure = 2.0; // Set to detected max value
+
+//   // ✅ Define server IP address
+//   final String serverIP = "http://10.110.12.209:5050";
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initializeCamera();
+//     _loadModel();
+//   }
+
+//   Future<void> _initializeCamera() async {
+//     try {
+//       cameras = await availableCameras();
+//       if (cameras != null && cameras!.isNotEmpty) {
+//         _cameraController = CameraController(
+//           cameras![0],
+//           ResolutionPreset.high,
+//           enableAudio: false,
+//           imageFormatGroup: ImageFormatGroup.yuv420,
+//         );
+
+//         await _cameraController!.initialize();
+//         await _cameraController!.setFlashMode(FlashMode.off);
+
+//         // ✅ Fetch min, max, and current exposure values
+//         _minExposure = await _cameraController!.getMinExposureOffset();
+//         _maxExposure = await _cameraController!.getMaxExposureOffset();
+//         _exposure = (_minExposure + _maxExposure) / 2; // Set to mid-range
+
+//         setState(() {});
+//       } else {
+//         print("❌ No cameras available");
+//       }
+//     } catch (e) {
+//       print("❌ Error initializing camera: $e");
+//     }
+//   }
+
+//   void _toggleCamera() {
+//     setState(() {
+//       isCameraEnabled = !isCameraEnabled;
+//     });
+
+//     if (isCameraEnabled) {
+//       _startFrameCapture();
+//     } else {
+//       captureTimer?.cancel();
+//     }
+//   }
+
+//   void _startFrameCapture() {
+//     captureTimer =
+//         Timer.periodic(Duration(seconds: captureInterval), (timer) async {
+//       if (!isCameraEnabled ||
+//           isProcessing ||
+//           _cameraController == null ||
+//           !_cameraController!.value.isInitialized) {
+//         return;
+//       }
+
+//       isProcessing = true;
+//       try {
+//         XFile imageFile = await _cameraController!.takePicture();
+//         Uint8List imageBytes = await imageFile.readAsBytes();
+//         String base64Image = await compute(encodeImageToBase64, imageBytes);
+//         await _sendToApi(base64Image);
+//       } catch (e) {
+//         print("❌ Error capturing frame: $e");
+//       } finally {
+//         isProcessing = false;
+//       }
+//     });
+//   }
+
+//   static String encodeImageToBase64(Uint8List imageBytes) {
+//     return base64Encode(imageBytes);
+//   }
+
+//   void _loadModel() async {
+//     if (isModelLoaded) return;
+
+//     String loadModelUrl = "$serverIP/load_model_${widget.exercise}";
+
+//     try {
+//       Response response = await dio.get(loadModelUrl);
+//       if (response.statusCode == 200) {
+//         print(
+//             "✅ Model ${widget.exercise} Loaded Successfully: ${response.data}");
+//         setState(() {
+//           isModelLoaded = true;
+//         });
+//       } else {
+//         print(
+//             "❌ Error loading Model ${widget.exercise}: ${response.statusCode}, ${response.data}");
+//       }
+//     } catch (e) {
+//       print("❌ Failed to load Model ${widget.exercise}: $e");
+//     }
+//   }
+
+//   Future<void> _sendToApi(String base64Image) async {
+//     String apiUrl = "$serverIP/predict/model_${widget.exercise}";
+//     print("🔗 API URL: $apiUrl");
+
+//     try {
+//       Response response = await dio.post(
+//         apiUrl,
+//         options: Options(
+//           headers: {"Content-Type": "application/json"},
+//           validateStatus: (status) => true,
+//         ),
+//         data: jsonEncode({"image": base64Image}),
+//       );
+
+//       print("✅ API Response Status: ${response.statusCode}");
+//       print("✅ API Response Body: ${response.data}");
+
+//       if (response.statusCode == 200) {
+//         setState(() {
+//           apiResponse = response.data.toString();
+//         });
+//       } else {
+//         setState(() {
+//           apiResponse = "❌ Error: ${response.statusCode}";
+//         });
+//       }
+//     } catch (e) {
+//       setState(() {
+//         apiResponse = "❌ Failed to connect to API";
+//       });
+//       print("❌ Failed to send request: $e");
+//     }
+//   }
+
+//   Future<void> _updateExposure(double value) async {
+//     if (_cameraController == null) return;
+
+//     try {
+//       await _cameraController!.setExposureOffset(value);
+//       setState(() {
+//         _exposure = value; // ✅ Update UI manually
+//       });
+//     } catch (e) {
+//       print("❌ Error setting exposure: $e");
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     captureTimer?.cancel();
+//     _cameraController?.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text("Exercise ${widget.exercise} Pose Detection")),
+//       body: Column(
+//         children: [
+//           Expanded(
+//             flex: 3,
+//             child: isCameraEnabled
+//                 ? (_cameraController == null ||
+//                         !_cameraController!.value.isInitialized
+//                     ? Center(child: CircularProgressIndicator())
+//                     : RotatedBox(
+//                         quarterTurns: 4,
+//                         child: CameraPreview(_cameraController!),
+//                       ))
+//                 : Center(child: Text("Camera is Off")),
+//           ),
+//           Slider(
+//             value: _exposure,
+//             min: _minExposure,
+//             max: _maxExposure,
+//             divisions: 10,
+//             label: _exposure.toStringAsFixed(2),
+//             onChanged: _updateExposure, // ✅ Adjust brightness dynamically
+//           ),
+//           ElevatedButton(
+//             onPressed: _toggleCamera,
+//             child: Text(isCameraEnabled ? "Turn Camera Off" : "Turn Camera On"),
+//           ),
+//           Expanded(
+//             flex: 1,
+//             child: Container(
+//               color: Colors.black,
+//               width: double.infinity,
+//               padding: EdgeInsets.all(16),
+//               child: Center(
+//                 child: Text(
+//                   apiResponse,
+//                   style: TextStyle(
+//                       color: Colors.white,
+//                       fontSize: 20,
+//                       fontWeight: FontWeight.bold),
+//                   textAlign: TextAlign.center,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+//LOADING MODEL FIRST THEN CALLING + OPTIMIZED + multiple exrercises + global variable for ip + Dynamic API + Manual Exposure + FRONT AND BACK CAMERA
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
+
+class PoseScreen extends StatefulWidget {
+  final int exercise;
+  PoseScreen({required this.exercise});
 
   @override
-  _PostureCameraScreenState createState() => _PostureCameraScreenState();
+  _PoseScreenState createState() => _PoseScreenState();
 }
 
-class _PostureCameraScreenState extends State<PostureCameraScreen> {
-  late Interpreter _interpreter;
+class _PoseScreenState extends State<PoseScreen> {
   CameraController? _cameraController;
-  bool _isDetecting = false;
-  String _postureStatus = "Analyzing...";
-  bool _isModelLoaded = false;
+  List<CameraDescription>? cameras;
+  bool isProcessing = false;
+  String apiResponse = "Waiting for pose analysis...";
+  bool isCameraEnabled = false;
+  Timer? captureTimer;
+  final int captureInterval = 2; // Time interval for capturing frames
+  final Dio dio = Dio();
+  bool isModelLoaded = false;
+  double _exposure = 0.0;
+  double _minExposure = -2.0;
+  double _maxExposure = 2.0;
+  int _selectedCameraIndex = 0; // Default: back camera
+
+  // ✅ Server IP address
+  final String serverIP = "http://192.168.206.58:5050";
 
   @override
   void initState() {
@@ -28,142 +279,229 @@ class _PostureCameraScreenState extends State<PostureCameraScreen> {
     _loadModel();
   }
 
-  Future<void> _loadModel() async {
-    try {
-      _interpreter = await Interpreter.fromAsset(
-          'assets/models/exercise_form_model.tflite');
-      setState(() => _isModelLoaded = true);
-    } catch (e) {
-      print("Error loading model: $e");
-    }
-  }
-
   Future<void> _initializeCamera() async {
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
-
-    _cameraController = CameraController(cameras[0], ResolutionPreset.medium);
     try {
-      await _cameraController?.initialize();
-      if (!mounted) return;
+      cameras = await availableCameras();
+      if (cameras == null || cameras!.isEmpty) {
+        print("❌ No cameras available");
+        return;
+      }
+
+      // ✅ Dispose existing controller before switching cameras
+      await _cameraController?.dispose();
+      _cameraController = null;
+
+      _cameraController = CameraController(
+        cameras![_selectedCameraIndex],
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+      );
+
+      await _cameraController!.initialize();
+      await _cameraController!.setFlashMode(FlashMode.off);
+
+      _minExposure = await _cameraController!.getMinExposureOffset();
+      _maxExposure = await _cameraController!.getMaxExposureOffset();
+      _exposure = (_minExposure + _maxExposure) / 2;
+
       setState(() {});
 
-      _cameraController?.startImageStream((image) {
-        if (!_isDetecting) {
-          _isDetecting = true;
-          _processFrame(image);
-        }
-      });
-    } catch (e) {
-      print("Error initializing camera: $e");
-    }
-  }
-
-  Future<void> _processFrame(CameraImage image) async {
-    final poseDetector = PoseDetector(options: PoseDetectorOptions());
-    final inputImage = _convertCameraImage(image);
-
-    try {
-      final poses = await poseDetector.processImage(inputImage);
-      if (poses.isNotEmpty) {
-        final keypoints = _extractKeypoints(poses.first);
-        await _runInference(keypoints);
+      // ✅ Restart frame capture if camera was already enabled
+      if (isCameraEnabled) {
+        _startFrameCapture();
       }
     } catch (e) {
-      print("Error processing frame: $e");
-    } finally {
-      _isDetecting = false;
+      print("❌ Error initializing camera: $e");
     }
   }
 
-  InputImage _convertCameraImage(CameraImage image) {
-    final bytesList = image.planes.fold<List<int>>(
-      [],
-      (previousValue, element) => previousValue + element.bytes,
-    );
+  void _switchCamera() async {
+    if (cameras == null || cameras!.isEmpty) return;
 
-    final bytes = Uint8List.fromList(bytesList);
-    final imageSize = Size(image.width.toDouble(), image.height.toDouble());
-    final camera = _cameraController?.description;
-    final rotation = camera != null
-        ? InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
-            InputImageRotation.rotation0deg
-        : InputImageRotation.rotation0deg;
+    // ✅ Toggle between front and back cameras
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % cameras!.length;
 
-    return InputImage.fromBytes(
-      bytes: bytes,
-      metadata: InputImageMetadata(
-        size: imageSize,
-        rotation: rotation,
-        format: InputImageFormat.nv21,
-        bytesPerRow: image.planes[0].bytesPerRow,
-      ),
-    );
+    await _initializeCamera();
   }
 
-  List<double> _extractKeypoints(Pose pose) {
-    List<double> keypoints = [];
-    for (PoseLandmarkType type in PoseLandmarkType.values) {
-      final landmark = pose.landmarks[type];
-      keypoints.addAll([landmark?.x ?? 0, landmark?.y ?? 0, landmark?.z ?? 0]);
+  void _toggleCamera() {
+    setState(() {
+      isCameraEnabled = !isCameraEnabled;
+    });
+
+    if (isCameraEnabled) {
+      _startFrameCapture();
+    } else {
+      captureTimer?.cancel();
     }
-    return keypoints.length == 99 ? keypoints : List.filled(99, 0.0);
   }
 
-  Future<void> _runInference(List<double> keypoints) async {
-    if (!_isModelLoaded || keypoints.length != 99) return;
+  void _startFrameCapture() {
+    captureTimer?.cancel(); // ✅ Cancel previous timer
+    captureTimer =
+        Timer.periodic(Duration(seconds: captureInterval), (timer) async {
+      if (!isCameraEnabled ||
+          isProcessing ||
+          _cameraController == null ||
+          !_cameraController!.value.isInitialized) {
+        return;
+      }
+
+      isProcessing = true;
+      try {
+        XFile imageFile = await _cameraController!.takePicture();
+        Uint8List imageBytes = await imageFile.readAsBytes();
+        String base64Image = await compute(encodeImageToBase64, imageBytes);
+        await _sendToApi(base64Image);
+      } catch (e) {
+        print("❌ Error capturing frame: $e");
+      } finally {
+        isProcessing = false;
+      }
+    });
+  }
+
+  static String encodeImageToBase64(Uint8List imageBytes) {
+    return base64Encode(imageBytes);
+  }
+
+  void _loadModel() async {
+    if (isModelLoaded) return;
+
+    String loadModelUrl = "$serverIP/load_model_${widget.exercise}";
+    print(loadModelUrl);
 
     try {
-      final input = [keypoints];
-      final output = List.filled(1, 0.0);
-      _interpreter.run(input, output);
+      Response response = await dio.get(loadModelUrl);
+      if (response.statusCode == 200) {
+        print(
+            "✅ Model ${widget.exercise} Loaded Successfully: ${response.data}");
+        setState(() {
+          isModelLoaded = true;
+        });
+      } else {
+        print(
+            "❌ Error loading Model ${widget.exercise}: ${response.statusCode}, ${response.data}");
+      }
+    } catch (e) {
+      print("❌ Failed to load Model ${widget.exercise}: $e");
+    }
+  }
 
+  Future<void> _sendToApi(String base64Image) async {
+    String apiUrl = "$serverIP/predict/model_${widget.exercise}";
+    print("🔗 API URL: $apiUrl");
+
+    try {
+      Response response = await dio.post(
+        apiUrl,
+        options: Options(
+          headers: {"Content-Type": "application/json"},
+          validateStatus: (status) => true,
+        ),
+        data: jsonEncode({"image": base64Image}),
+      );
+
+      print("✅ API Response Status: ${response.statusCode}");
+      print("✅ API Response Body: ${response.data}");
+
+      if (response.statusCode == 200) {
+        setState(() {
+          apiResponse = response.data.toString();
+        });
+      } else {
+        setState(() {
+          apiResponse = "❌ Error: ${response.statusCode}";
+        });
+      }
+    } catch (e) {
       setState(() {
-        _postureStatus =
-            output[0] == 1 ? "Correct Posture" : "Incorrect Posture";
+        apiResponse = "❌ Failed to connect to API";
+      });
+      print("❌ Failed to send request: $e");
+    }
+  }
+
+  Future<void> _updateExposure(double value) async {
+    if (_cameraController == null) return;
+
+    try {
+      await _cameraController!.setExposureOffset(value);
+      setState(() {
+        _exposure = value;
       });
     } catch (e) {
-      print("Error running inference: $e");
+      print("❌ Error setting exposure: $e");
     }
   }
 
   @override
   void dispose() {
+    captureTimer?.cancel();
     _cameraController?.dispose();
-    _interpreter.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            if (_cameraController != null &&
-                _cameraController!.value.isInitialized)
-              AspectRatio(
-                aspectRatio: _cameraController!.value.aspectRatio,
-                child: CameraPreview(_cameraController!),
+      appBar: AppBar(title: Text("Exercise ${widget.exercise} Pose Detection")),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: isCameraEnabled
+                ? (_cameraController == null ||
+                        !_cameraController!.value.isInitialized
+                    ? Center(child: CircularProgressIndicator())
+                    : RotatedBox(
+                        quarterTurns: 4,
+                        child: CameraPreview(_cameraController!),
+                      ))
+                : Center(child: Text("Camera is Off")),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: _toggleCamera,
+                child: Text(
+                    isCameraEnabled ? "Turn Camera Off" : "Turn Camera On"),
               ),
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
+              ElevatedButton(
+                onPressed: _switchCamera,
+                child: Text("Switch Camera"),
+              ),
+            ],
+          ),
+          Slider(
+            value: _exposure,
+            min: _minExposure,
+            max: _maxExposure,
+            divisions: 10,
+            label: _exposure.toStringAsFixed(2),
+            onChanged: _updateExposure,
+          ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: Colors.black,
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
               child: Center(
                 child: Text(
-                  _postureStatus,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  apiResponse,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

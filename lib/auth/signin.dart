@@ -4,9 +4,9 @@ import 'auth_service.dart';
 import 'signup.dart';
 import '../widgets/home_screen.dart';
 
-  class SigninScreen extends StatelessWidget {
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
+class SigninScreen extends StatelessWidget {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   SigninScreen({super.key});
 
@@ -129,10 +129,7 @@ import '../widgets/home_screen.dart';
 
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Color(0xFF5CB85C),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 

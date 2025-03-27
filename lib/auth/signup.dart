@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
 import 'auth_service.dart';
