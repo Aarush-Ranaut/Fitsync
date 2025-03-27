@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'workout_plan_page.dart';
 
 class WorkoutPlanHomePage extends StatelessWidget {
   const WorkoutPlanHomePage({super.key});
@@ -8,7 +7,23 @@ class WorkoutPlanHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SingleChildScrollView(
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: Icon(Icons.fitness_center, color: Colors.blue),
+        title: const Text("FitAI", style: TextStyle(color: Colors.white, fontSize: 20)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.person, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,12 +47,7 @@ class WorkoutPlanHomePage extends StatelessWidget {
                     ],
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => WorkoutPlanPage()),
-                      );
-                    },
+                    onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[800],
                     ),
@@ -84,6 +94,22 @@ class WorkoutPlanHomePage extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return BottomNavigationBar(
+      backgroundColor: Colors.black,
+      selectedItemColor: Colors.blue,
+      unselectedItemColor: Colors.white70,
+      items: [
+        BottomNavigationBarItem(icon: Icon(Icons.view_list), label: "Routines"),
+        BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: "Exercises"),
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Workout"),
+        BottomNavigationBarItem(icon: Icon(Icons.self_improvement), label: "Recover"),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Account"),
+      ],
     );
   }
 

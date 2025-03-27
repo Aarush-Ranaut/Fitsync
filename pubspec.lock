@@ -672,38 +672,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1+1"
-  intl:
-    dependency: "direct main"
-    description:
-      name: intl
-      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.20.2"
-  iris_method_channel:
-    dependency: transitive
-    description:
-      name: iris_method_channel
-      sha256: "99143ae77073ee8fd6c19d8f56ec59ba6c332000d8bea46bb9b6a89d83feca5c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.2"
-  jitsi_meet_flutter_sdk:
-    dependency: "direct main"
-    description:
-      name: jitsi_meet_flutter_sdk
-      sha256: ad72f7ae8db1508c944a7a7f135c4cccdc676efb31ab7617b9f5b0dac4791ccd
-      url: "https://pub.dev"
-    source: hosted
-    version: "11.1.1"
-  js:
-    dependency: transitive
-    description:
-      name: js
-      sha256: c1b2e9b5ea78c45e1a0788d29606ba27dc5f71f019f32ca5140f61ef071838cf
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.1"
   json_annotation:
     dependency: transitive
     description:
