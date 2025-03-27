@@ -53,6 +53,7 @@ dependencies:
   google_generative_ai: ^0.4.6
   firebase_crashlytics: ^4.3.2
   flutter_health_connect: ^1.2.3
+  intl: any
 
 dev_dependencies:
   flutter_test:
