@@ -126,22 +126,8 @@ class _AIIntegrationState extends State<AIIntegration> {
               .update({'message': newGreeting});
 
           setState(() {
-            final index =
-                _messages.indexWhere((msg) => msg['isGreeting'] == true);
-            if (index != -1) {
-              _messages[index]['message'] = newGreeting;
-            }
-          });
-        } else {
-          // Send new greeting if none exists
-          await _addMessageToFirestore('AI', newGreeting, isGreeting: true);
-          setState(() {
-            _messages.add({
-              "sender": "AI",
-              "message": newGreeting,
-              "timestamp": DateTime.now(),
-              "isGreeting": true
-            });
+            height = userDoc['height']?.toString() ?? 'unknown';
+            weight = userDoc['weight']?.toString() ?? 'unknown';
           });
 
           final firstName = userDoc['firstName'] ?? 'unknown';
@@ -150,7 +136,6 @@ class _AIIntegrationState extends State<AIIntegration> {
 
           await _chat.sendMessage(gpt.Content.text(initialMessage));
 
-          await _addMessageToFirestore('AI', greeting, isGreeting: true);
           setState(() {
             _initialMessage = initialMessage;
             _messages.add({"sender": "AI", "message": _initialMessage});
