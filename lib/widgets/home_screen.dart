@@ -1,512 +1,818 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart' as intl;
-import 'edit_profile_screen.dart';
-import '../widgets/ai_integration.dart';
-import 'package:syncfusion_flutter_gauges/gauges.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fitsync_app/onboarding_screen.dart';
+import 'package:fitsync_app/models/onboarding_data.dart';
+import 'gemini_api.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String? username;
-  final String? profilePictureUrl;
-
-  const HomeScreen({super.key, this.username, this.profilePictureUrl});
+  final OnboardingData onboardingData;
+  const HomeScreen({required this.onboardingData, super.key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  final limeGreenColor = const Color(0xFF90FF42);
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  Map<String, dynamic> workoutPlan = {};
+  bool isLoading = true;
+  int _currentDay = 1;
+  Map<String, dynamic> _workoutProgress = {};
+  Map<String, dynamic> muscleEnergy = {};
+  final double recoveryRate = 20.0;
+  final double drainFactor = 100.0;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late List<Animation<double>> _cardAnimations;
 
-  static const List<NavigationItemData> _navigationItems = [
-    NavigationItemData(iconPath: 'assets/images/home.png', label: 'Home'),
-    NavigationItemData(iconPath: 'assets/images/camera.png', label: 'Camera'),
-    NavigationItemData(iconPath: 'assets/images/watch.png', label: 'Watch'),
-    NavigationItemData(iconPath: 'assets/images/profile.png', label: 'Profile'),
-  ];
+  double _progressValue = 0.0;
+  String _progressMessage = "Fetch user data...";
+  bool _showFakeProgressDialog = true;
 
-  Future<Map<String, dynamic>> _fetchUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return {"firstName": "Guest", "profileImage": ""};
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-    if (!userDoc.exists) return {"firstName": "Guest", "profileImage": ""};
-
-    return {
-      "firstName": userDoc['firstName'] ?? "Guest",
-      "profileImage": userDoc['profileImage'] ?? "",
-    };
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _loadProgress();
+    _cardAnimations = [];
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      switch (index) {
-        case 0:
-          // Home
-          break;
-        case 1:
-          // Camera
-          break;
-        case 2:
-          // Watch
-          break;
-        case 3:
-          _navigateToEditProfile(context);
-          break;
+  void _initializeAnimations() {
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _animationController.forward();
+  }
+
+  Future<void> _loadProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentDay = prefs.getInt('currentDay') ?? 1;
+    _workoutProgress = jsonDecode(prefs.getString('progress') ?? '{}');
+    String? muscleEnergyJson = prefs.getString('muscleEnergy');
+    if (muscleEnergyJson != null) {
+      setState(() {
+        muscleEnergy = jsonDecode(muscleEnergyJson);
+      });
+    }
+    _startFakeProgress();
+  }
+
+  void _startFakeProgress() {
+    const totalDuration = 5;
+    const steps = [
+      "Fetch user data...",
+      "Analyzing preferences...",
+      "Generating plan...",
+      "Finalizing details..."
+    ];
+    int currentStep = 0;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _buildFakeProgressDialog(),
+      );
+    });
+
+    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
+
+      setState(() {
+        _progressValue += 0.02;
+        if (_progressValue >= (currentStep + 1) / steps.length) {
+          currentStep++;
+          if (currentStep < steps.length) {
+            _progressMessage = steps[currentStep];
+          }
+        }
+
+        if (_progressValue >= 1.0) {
+          timer.cancel();
+          _showFakeProgressDialog = false;
+          Navigator.pop(context);
+          loadWorkoutPlan();
+        }
+      });
     });
   }
 
-  void _navigateToEditProfile(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProfileScreen(userId: userId),
-      ),
-    );
+  Future<void> _saveProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('currentDay', _currentDay);
+    await prefs.setString('progress', jsonEncode(_workoutProgress));
   }
 
-  void _navigateToAIIntegration(BuildContext context) {
-    String apiKey = 'AIzaSyB1FflSFQMelsT-Ra27xsPLAlBjfsW7uLU';
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AIIntegration(apiKey: apiKey),
-      ),
-    );
+  Future<void> _updateMuscleEnergy(String muscle, double volume) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    double currentEnergy = 100.0;
+    DateTime lastUpdated = DateTime.now();
+
+    if (muscleEnergy.containsKey(muscle)) {
+      currentEnergy = muscleEnergy[muscle]['energy'];
+      lastUpdated = DateTime.parse(muscleEnergy[muscle]['lastUpdated']);
+    }
+
+    double drain = volume / drainFactor;
+    double newEnergy = (currentEnergy - drain).clamp(0.0, 100.0);
+
+    setState(() {
+      muscleEnergy[muscle] = {
+        'energy': newEnergy,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+    });
+
+    await prefs.setString('muscleEnergy', jsonEncode(muscleEnergy));
   }
 
-  Widget _buildGaugeMeter() {
-  return SizedBox(
-    width: 80,
-    height: 80,
-    child: SfRadialGauge(
-      axes: <RadialAxis>[
-        RadialAxis(
-          startAngle: 180,
-          endAngle: 0,
-          minimum: 0,
-          maximum: 100,
-          showLabels: false,
-          showTicks: false,
-          axisLineStyle: AxisLineStyle(
-            thickness: 0.12,
-            thicknessUnit: GaugeSizeUnit.factor,
-            cornerStyle: CornerStyle.bothCurve,
-            gradient: const SweepGradient(
-              colors: [Colors.blue, Colors.green],
-              stops: [0.25, 0.75],
-            ),
-          ),
-          pointers: <GaugePointer>[
-            NeedlePointer(
-              value: 75,
-              needleLength: 0.7,
-              lengthUnit: GaugeSizeUnit.factor,
-              needleColor: Colors.redAccent,
-              needleEndWidth: 4,
-              knobStyle: const KnobStyle(
-                color: Colors.white,
-                borderColor: Colors.redAccent,
-                borderWidth: 2,
-                sizeUnit: GaugeSizeUnit.factor,
-                knobRadius: 0.06,
-              ),
-              enableAnimation: true,
-              animationType: AnimationType.ease,
-              animationDuration: 1200,
-            ),
-          ],
-          annotations: <GaugeAnnotation>[
-            GaugeAnnotation(
-              widget: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    '75%',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'Progress',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                ],
-              ),
-              angle: 90,
-              positionFactor: 0.0,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+  double getCurrentEnergy(String muscle) {
+    if (!muscleEnergy.containsKey(muscle)) return 100.0;
 
-Widget _buildHealthCard() {
-  return Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Colors.grey[800]!, Colors.grey[900]!],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.5),
-          blurRadius: 10,
-          spreadRadius: 1,
-          offset: const Offset(0, 6),
-        ),
-        BoxShadow(
-          color: limeGreenColor.withOpacity(0.15),
-          blurRadius: 20,
-          spreadRadius: 1,
-          offset: const Offset(0, 0),
-        ),
-      ],
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeInOut,
-          child: _buildGaugeMeter(),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildHealthInfo(Icons.favorite, 'BPM', '72'),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
+    final data = muscleEnergy[muscle];
+    final storedEnergy = data['energy'].toDouble();
+    final lastUpdated = DateTime.parse(data['lastUpdated']);
+    final hoursPassed = DateTime.now().difference(lastUpdated).inSeconds / 3600;
+    final recovered = hoursPassed * recoveryRate;
 
-Widget _buildHealthInfo(IconData icon, String label, String value) {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: limeGreenColor.withOpacity(0.08),
-              blurRadius: 3,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Icon(icon, color: limeGreenColor, size: 20),
-      ),
-      const SizedBox(width: 6),
-      RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Poppins',
-              ),
-            ),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: limeGreenColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
-}
+    return (storedEnergy + recovered).clamp(0.0, 100.0);
+  }
 
-  Widget _buildTutorials() {
-    List<Map<String, dynamic>> tutorials = [
-      {
-        "title": "BACK",
-        "image": "assets/images/back_workout.png",
-        "color": const Color(0xFFFFE5D9), // Light peach
-      },
-      {
-        "title": "CHEST",
-        "image": "assets/images/chest_workout.png",
-        "color": const Color(0xFFFFFFB3), // Light yellow
-      },
-      {
-        "title": "LEGS",
-        "image": "assets/images/legs_workout.jpg",
-        "color": const Color(0xFFCFFF95), // Light green
-      },
-      {
-        "title": "ARMS",
-        "image": "assets/images/arms_workout.jpg",
-        "color": const Color(0xFFD0A9F5), // Light purple
-      },
-    ];
+  void _showEnergyDialog(BuildContext context) {
+    final muscles = muscleEnergy.keys.toList();
+    final currentEnergies = {
+      for (var muscle in muscles) muscle: getCurrentEnergy(muscle)
+    };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Tutorials",
-          style: TextStyle(
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          "Muscle Energy Levels",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
+        content: SizedBox(
+          width: double.maxFinite,
           child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: tutorials.length,
+            shrinkWrap: true,
+            itemCount: muscles.length,
             itemBuilder: (context, index) {
-              final tutorial = tutorials[index];
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
-                  color: tutorial["color"] as Color,
-                  borderRadius: BorderRadius.circular(16),
+              final muscle = muscles[index];
+              final energy = currentEnergies[muscle]!;
+              return ListTile(
+                title: Text(
+                  muscle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Text(
-                        tutorial["title"] as String,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.asset(
-                          tutorial["image"] as String,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      ),
-                    ),
-                  ],
+                trailing: Text(
+                  "${energy.toStringAsFixed(1)}%",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                subtitle: LinearProgressIndicator(
+                  value: energy / 100,
+                  backgroundColor: Colors.grey[700],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    energy > 50
+                        ? const Color(0xFF89F336)
+                        : energy > 25
+                            ? Colors.orange
+                            : Colors.red,
+                  ),
                 ),
               );
             },
           ),
         ),
-      ],
-    );
-  }
-
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.black,
-    body: Stack(
-      children: [
-        // Main scrollable content
-        SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: FutureBuilder<Map<String, dynamic>>(
-                future: _fetchUserData(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF90FF42)),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return const Center(
-                      child: Text(
-                        "Error loading data",
-                        style: TextStyle(color: Colors.red, fontSize: 22),
-                      ),
-                    );
-                  }
-
-                  String firstName = snapshot.data?['firstName'] ?? "Guest";
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      Text(
-                        intl.DateFormat('MMM dd, yyyy').format(DateTime.now()),
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            firstName,
-                            style: TextStyle(
-                              color: limeGreenColor,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[850],
-                              shape: BoxShape.circle,
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.notifications_outlined,
-                                color: limeGreenColor,
-                                size: 24,
-                              ),
-                              onPressed: () {
-                                print('Notification button pressed');
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildHealthCard(),
-                      const SizedBox(height: 20),
-                      _buildTutorials(),
-                      const SizedBox(height: 80), // Reduce bottom padding
-                    ],
-                  );
-                },
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Close",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF89F336),
               ),
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
 
-        // Bottom Navigation Bar (Moved Further Down)
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 10, // Adjusted for lower positioning
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.grey[900]!.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(35),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+  Future<void> loadWorkoutPlan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? savedData = prefs.getString('workoutPlan');
+
+      if (savedData != null) {
+        setState(() {
+          workoutPlan = jsonDecode(savedData);
+          isLoading = false;
+          _updateCardAnimations();
+        });
+      } else {
+        fetchWorkoutPlan();
+      }
+    } catch (e) {
+      print("Error loading saved workout plan: $e");
+      fetchWorkoutPlan();
+    }
+  }
+
+  Future<void> fetchWorkoutPlan() async {
+    try {
+      String data = await rootBundle.loadString('assets/exercises.json');
+      List<dynamic> rawList = jsonDecode(data);
+      List<Map<String, dynamic>> exercisesDB =
+          rawList.map((e) => Map<String, dynamic>.from(e)).toList();
+
+      Map<String, dynamic> plan = await GeminiAI.generateWorkoutPlan(
+          widget.onboardingData, exercisesDB);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('workoutPlan', jsonEncode(plan));
+
+      setState(() {
+        workoutPlan = plan;
+        isLoading = false;
+        _updateCardAnimations();
+      });
+    } catch (e) {
+      print("Error fetching workout plan: $e");
+      setState(() {
+        isLoading = false;
+        _cardAnimations = [];
+      });
+    }
+  }
+
+  void _updateCardAnimations() {
+    final exerciseCount =
+        workoutPlan["Day $_currentDay"]?["exercises"]?.length ?? 0;
+    _cardAnimations = List.generate(
+      exerciseCount,
+      (index) => Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(
+            0.2 + (index * 0.1),
+            1.0,
+            curve: Curves.easeOutCubic,
+          ),
+        ),
+      ),
+    );
+
+    _animationController.reset();
+    _animationController.forward();
+  }
+
+  int get workoutPlanLength =>
+      workoutPlan.keys.where((k) => k.startsWith("Day")).length;
+
+  Future<void> _signOut() async {
+    await _auth.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+    );
+  }
+
+  void _showChatAIDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          "Chat with AI",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          "This is a placeholder for the Chat AI feature.",
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[400],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Close",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF89F336),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          "Workout Planner",
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: _signOut,
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
+                        children: [
+                          Text(
+                            "Welcome, ${_auth.currentUser?.email?.split('@')[0] ?? "User"}!",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Goal: ${widget.onboardingData.goal}",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey[400],
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: _activePlanHeader(),
+                          ),
+                          const SizedBox(height: 20),
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: _nextWorkoutSection(),
+                          ),
+                          const SizedBox(height: 20),
+                          _exerciseList(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _startWorkoutButton(),
+                ],
+              ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showEnergyDialog(context),
+        backgroundColor: const Color(0xFF89F336),
+        child: const Icon(Icons.fitness_center, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildFakeProgressDialog() {
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.fitness_center,
+              color: Color(0xFF89F336),
+              size: 40,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Building Your Plan",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _progressMessage,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[400],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  height: 60,
+                  width: 60,
+                  child: CircularProgressIndicator(
+                    value: _progressValue,
+                    backgroundColor: Colors.grey[700],
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Color(0xFF89F336)),
+                    strokeWidth: 6,
+                  ),
+                ),
+                Text(
+                  "${(_progressValue * 100).toInt()}%",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(_navigationItems.length, (index) {
-                return GestureDetector(
-                  onTap: () => _onItemTapped(index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _selectedIndex == index 
-                          ? limeGreenColor.withOpacity(0.2) 
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          _navigationItems[index].iconPath,
-                          width: 24,
-                          height: 24,
-                          color: _selectedIndex == index ? limeGreenColor : Colors.white70,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _navigationItems[index].label,
-                          style: TextStyle(
-                            color: _selectedIndex == index ? limeGreenColor : Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (index) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: 8,
+                  decoration: BoxDecoration(
+                    color: index < (_progressValue * 3).toInt()
+                        ? const Color(0xFF89F336)
+                        : Colors.grey[700],
+                    shape: BoxShape.circle,
                   ),
                 );
               }),
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
 
-        // AI Chat Button
-        Positioned(
-          right: 20,
-          bottom: 10,
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: limeGreenColor.withOpacity(0.3),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ],
+  Widget _activePlanHeader() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Icon(Icons.flash_on, color: Color(0xFF89F336)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              "Active Plan: ${_auth.currentUser?.email?.split('@')[0] ?? "User"}'s Journey",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
-            child: FloatingActionButton(
-              onPressed: () => _navigateToAIIntegration(context),
-              backgroundColor: limeGreenColor,
-              child: const Icon(Icons.chat, color: Colors.black),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[700],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
+            onPressed: () {},
+            child: Text(
+              "Plans",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _nextWorkoutSection() {
+    return Row(
+      children: [
+        const Icon(Icons.play_arrow, color: Color(0xFF89F336)),
+        const SizedBox(width: 8),
+        Text(
+          "Your next workout: Day $_currentDay",
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
-    ),
-  );
-}
-}
-class NavigationItemData {
-  final String iconPath;
-  final String label;
+    );
+  }
 
-  const NavigationItemData({required this.iconPath, required this.label});
+  Widget _exerciseList() {
+    final exerciseCount =
+        workoutPlan["Day $_currentDay"]?["exercises"]?.length ?? 0;
+
+    if (exerciseCount == 0 || _cardAnimations.isEmpty) {
+      return const Center(
+        child: Text(
+          "No exercises available for this day.",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: ListView.builder(
+        itemCount: exerciseCount,
+        itemBuilder: (context, index) {
+          if (index >= _cardAnimations.length) {
+            return const SizedBox.shrink();
+          }
+          return FadeTransition(
+            opacity: _cardAnimations[index],
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - _cardAnimations[index].value)),
+              child: _exerciseCard(
+                  workoutPlan["Day $_currentDay"]["exercises"][index]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _exerciseCard(Map<String, dynamic> exercise) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.6),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  height: 60,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Image.asset(
+                    getExerciseImage(exercise["name"]),
+                    height: 60,
+                    width: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(
+                          Icons.fitness_center,
+                          color: Colors.white54,
+                          size: 30,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exercise["name"],
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${exercise["sets"]} sets x ${exercise["reps"]} reps",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _startWorkoutButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              "${workoutPlan["Day $_currentDay"]?["exercises"]?.length ?? 0} exercises for Day $_currentDay",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[400],
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF89F336),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            icon: const Icon(Icons.flash_on, color: Colors.white),
+            label: Text(
+              "Start",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            onPressed: () async {
+              if (workoutPlan.isNotEmpty) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    title: Text(
+                      "Workout Started",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    content: Text(
+                      "Workout tracking is not available yet.",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          setState(() => _currentDay =
+                              (_currentDay % workoutPlanLength) + 1);
+                          _saveProgress();
+                        },
+                        child: Text(
+                          "Finish",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF89F336),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String getExerciseImage(String exerciseName) {
+    return "assets/exercises/${exerciseName.toLowerCase().replaceAll(" ", "_")}.png";
+  }
 }

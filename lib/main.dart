@@ -1,128 +1,247 @@
 import 'package:firebase_core/firebase_core.dart';
-
-import 'package:fitsync_app/onboarding_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:fitsync_app/onboarding_screen.dart';
+import 'package:fitsync_app/widgets/edit_profile_screen.dart';
+import 'package:fitsync_app/widgets/home_screen.dart';
+import 'package:fitsync_app/widgets/exercise_selection.dart';
+import 'package:fitsync_app/widgets/gamification_provider.dart';
+import 'firebase_options.dart';
+import 'package:fitsync_app/widgets/user_data_provider.dart';
+import 'package:fitsync_app/models/onboarding_data.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MyApp());
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => GamificationProvider()),
+        ChangeNotifierProvider(create: (context) => UserDataProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
+  // Function to check if the user is logged in
+  Future<bool> _checkLoginStatus() async {
+    await Future.delayed(
+        const Duration(seconds: 1)); // Optional: simulate delay for splash
+    return FirebaseAuth.instance.currentUser != null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-            // This is the theme of your application.
-            //
-            // TRY THIS: Try running your application with "flutter run". You'll see
-            // the application has a purple toolbar. Then, without quitting the app,
-            // try changing the seedColor in the colorScheme below to Colors.green
-            // and then invoke "hot reload" (save your changes or press the "hot
-            // reload" button in a Flutter-supported IDE, or press "r" if you used
-            // the command line to start the app).
-            //
-            // Notice that the counter didn't reset back to zero; the application
-            // state is not lost during the reload. To reset the state, use hot
-            // restart instead.
-            //
-            // This works for code too, not just values: Most code changes can be
-            // tested with just a hot reload.
-
-            ),
-        home: OnboardingScreen());
+      title: 'FitSync',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.greenAccent,
+      ),
+      home: FutureBuilder<bool>(
+        future: _checkLoginStatus(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Show a loading screen while checking auth status
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                ),
+              ),
+            );
+          } else if (snapshot.hasData && snapshot.data == true) {
+            // User is logged in, go to MainScreen (HomeScreen)
+            return const MainScreen();
+          } else {
+            // User is not logged in, go to OnboardingScreen
+            return const OnboardingScreen();
+          }
+        },
+      ),
+    );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MainScreen extends StatefulWidget {
+  const MainScreen({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+  final Color limeGreenColor = const Color(0xFF90FF42);
 
-  void _incrementCounter() {
+  static const List<NavigationItemData> _navigationItems = [
+    NavigationItemData(iconPath: 'assets/images/home.png', label: 'Home'),
+    NavigationItemData(iconPath: 'assets/images/camera.png', label: 'Camera'),
+    NavigationItemData(iconPath: 'assets/images/watch.png', label: 'Watch'),
+    NavigationItemData(iconPath: 'assets/images/profile.png', label: 'Profile'),
+  ];
+
+  void _onItemTapped(int index) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _selectedIndex = index;
     });
+
+    // Handle navigation for specific tabs
+    if (index == 2) {
+      // "Watch" tab (Chat AI equivalent)
+      _showChatAIDialog();
+    }
+  }
+
+  void _showChatAIDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          "Chat with AI",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          "This is a placeholder for the Chat AI feature.",
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[400],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Close",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF89F336),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.grey[900]!.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(35),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(_navigationItems.length, (index) {
+              return GestureDetector(
+                onTap: () => _onItemTapped(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _selectedIndex == index
+                        ? limeGreenColor.withOpacity(0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        _navigationItems[index].iconPath,
+                        width: 24,
+                        height: 24,
+                        color: _selectedIndex == index
+                            ? limeGreenColor
+                            : Colors.white70,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _navigationItems[index].label,
+                        style: TextStyle(
+                          color: _selectedIndex == index
+                              ? limeGreenColor
+                              : Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: Stack(
+        children: [
+          _buildPageContent(),
+          _buildBottomNavigationBar(),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicfigmaer for build methods.
     );
   }
+
+  Widget _buildPageContent() {
+    var defaultOnboardingData = OnboardingData(
+      goal: 'Build Muscle',
+      focusAreas: ['Chest', 'Legs'],
+      experience: 'Beginner',
+      workoutFrequency: 3,
+    );
+
+    switch (_selectedIndex) {
+      case 0:
+        return HomeScreen(onboardingData: defaultOnboardingData);
+      case 1:
+        return const ExerciseSelectionScreen();
+      case 2:
+        return const Center(
+            child: Text("Watch Feature Coming Soon",
+                style: TextStyle(fontSize: 20, color: Colors.white)));
+      case 3:
+        return EditProfileScreen(onboardingData: defaultOnboardingData);
+      default:
+        return HomeScreen(onboardingData: defaultOnboardingData);
+    }
+  }
+}
+
+class NavigationItemData {
+  final String iconPath;
+  final String label;
+
+  const NavigationItemData({required this.iconPath, required this.label});
 }

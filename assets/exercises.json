@@ -1,0 +1,73 @@
+[
+    { "muscle": "Chest", "name": "Dumbbell Bench Press"},
+    { "muscle": "Chest", "name": "Incline Dumbbell Bench Press"},
+    { "muscle": "Chest", "name": "Flat Dumbbell Flys"},
+    { "muscle": "Chest", "name": "Barbell Bench Press"},
+    { "muscle": "Chest", "name": "Close Grip Dumbbell Press"},
+    { "muscle": "Chest", "name": "Incline Dumbbell Flys"},
+    { "muscle": "Chest", "name": "Dumbbell Twist Press"},
+    { "muscle": "Chest", "name": "Neutral Grip Dumbbell Bench Press"},
+    { "muscle": "Chest", "name": "Neutral Grip Incline Dumbbell Bench Press"},
+
+
+    { "muscle": "Triceps", "name": "Straight Bar Tricep Extension" },
+    { "muscle": "Triceps", "name": "Seated Dumbbell Tricep Extension" },
+    { "muscle": "Triceps", "name": "Dumbbell Floor Press" },
+    { "muscle": "Triceps", "name": "Two Arm Standing Dumbbell" },
+    { "muscle": "Triceps", "name": "Bent Over Dumbbell Tricep Kickback" },
+    { "muscle": "Triceps", "name": "Incline Dumbbell Tricep Extension" },
+    { "muscle": "Triceps", "name": "Close Grip Bench Press" },
+    { "muscle": "Triceps", "name": "California Skullcrusher" },
+
+    { "muscle": "Back", "name": "Bent Over Dumbbell Row"},
+    { "muscle": "Back", "name": "Barbell Bent Over Row"},
+    { "muscle": "Back", "name": "Tripod Dumbbell Row"},
+    { "muscle": "Back", "name": "Superman Exercise"},
+    { "muscle": "Back", "name": "Lat Pull Down"},
+    { "muscle": "Back", "name": "Close Grip Lat Pull Down"},
+    { "muscle": "Back", "name": "Pull Up"},
+    { "muscle": "Back", "name": "Dumbbell Shrug"},
+    { "muscle": "Back", "name": "Overhead Barbell Shrug"},
+
+    
+    { "muscle": "Abs", "name": "Lying Floor Leg Raise"},
+    { "muscle": "Abs", "name": "Weighted Crunch"},
+    { "muscle": "Abs", "name": "Sit Up"},
+    { "muscle": "Abs", "name": "Ab Crunch"},
+    { "muscle": "Abs", "name": "Rotating Mountain Climber"},
+    { "muscle": "Abs", "name": "Abdominal Air Bike"},
+    { "muscle": "Abs", "name": "Lying Floor Knee Tuck"},
+    { "muscle": "Abs", "name": "Plank to Hip Raise"},
+
+    { "muscle": "Biceps", "name": "Incline Dumbbell Curl"},
+    { "muscle": "Biceps", "name": "Zottman Curl"},
+    { "muscle": "Biceps", "name": "Concentration Curl"},
+    { "muscle": "Biceps", "name": "Standing Dumbbell Reverse Curl"},
+    { "muscle": "Biceps", "name": "Standing Dumbbell Drag Curl"},
+    { "muscle": "Biceps", "name": "Barbell Drag Curl"},
+    { "muscle": "Biceps", "name": "Seated Zottman Curl"},
+
+    { "muscle": "Shoulder", "name": "Seated Dumbbell Press"},
+    { "muscle": "Shoulder", "name": "Bent Over Dumbbell Reverse Fly"},
+    { "muscle": "Shoulder", "name": "Seated Arnold Press"},
+    { "muscle": "Shoulder", "name": "Seated Bent Over Dumbbell Reverse Fly"},
+    { "muscle": "Shoulder", "name": "Dumbbell Upright Row"},
+    { "muscle": "Shoulder", "name": "Cable Upright Row"},
+    { "muscle": "Shoulder", "name": "Lateral Raise Partials"},
+    { "muscle": "Shoulder", "name": "Alternate Seated Dumbbell Press"},
+    { "muscle": "Shoulder", "name": "Overhead Press"},
+
+    { "muscle": "Legs", "name": "Dumbbell Goblet Squat"},
+    { "muscle": "Legs", "name": "Barbell Back Squat"},
+    { "muscle": "Legs", "name": "Dumbbell Split Squat"},
+    { "muscle": "Legs", "name": "Glute Kick Back"},
+    { "muscle": "Legs", "name": "Romanian Deadlift"},
+    { "muscle": "Legs", "name": "Jump Rope"},
+    { "muscle": "Legs", "name": "Plie Squat"},
+    { "muscle": "Legs", "name": "Deep Squat Prying"},
+    { "muscle": "Legs", "name": "Alternating Lateral Lunge"},
+    { "muscle": "Legs", "name": "Dumbbell Rear Lunge"},
+    { "muscle": "Legs", "name": "Barbell Reverse Lunge"}
+
+  ]
+  

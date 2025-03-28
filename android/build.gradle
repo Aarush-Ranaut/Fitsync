@@ -1,16 +1,41 @@
-allprojects {
+buildscript {
+    ext.kotlin_version = '2.1.0'  // Must be 2.1.0
     repositories {
         google()
         mavenCentral()
     }
-} 
-ext.kotlin_version = "1.9.10" // Example of the latest version
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs.addAll(["-Xlint:deprecation", "-Xlint:unchecked"])
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    subprojects {
+        afterEvaluate { project ->
+            if (project.hasProperty('android')) {
+                project.android {
+                    namespace = namespace ?: project.group
+                    compileSdkVersion 35
+                }
+            }
+        }
+    }
+}
 
 rootProject.buildDir = "../build"
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
     project.evaluationDependsOn(":app")
 }
 

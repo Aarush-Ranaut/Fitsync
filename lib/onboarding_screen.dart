@@ -1,5 +1,7 @@
-import 'package:fitsync_app/welcome_screen.dart';
+import 'package:fitsync_app/auth/signup.dart';
 import 'package:flutter/material.dart';
+import 'package:fitsync_app/models/onboarding_data.dart'; // Add this import
+import 'package:fitsync_app/widgets/user_info/height_picker_page.dart'; // Add this import
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -19,7 +21,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.initState();
     // Smooth floating animation
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500), // Shortened for smoothness
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -30,9 +32,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _onSlideComplete() {
     if (_slideOffset >= 100) {
-      // Directly navigate to WelcomeScreen without fade transition
+      // Navigate to HeightPickerPage with onboardingData
+      var defaultOnboardingData = OnboardingData(
+        goal: 'Build Muscle',
+        focusAreas: ['Chest', 'Legs'],
+        experience: 'Beginner',
+        workoutFrequency: 3,
+      );
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        MaterialPageRoute(
+          builder: (context) =>
+              SignupScreen(onboardingData: defaultOnboardingData),
+        ),
       );
     } else {
       setState(() {
@@ -56,13 +67,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           children: [
             // FitSync Logo
             const Positioned(
-              left: 125,
+              left: 100,
               top: 120,
               child: Text.rich(
                 TextSpan(
                   text: 'Fit',
                   style: TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'Roboto', // Changed to Roboto
                     fontSize: 50,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -71,7 +82,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     TextSpan(
                       text: 'Sync',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'Roboto', // Changed to Roboto
                         fontSize: 50,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF89F336),
@@ -106,8 +117,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         children: [
                           // Green background container
                           Container(
-                            width: 100,
-                            height: 150,
+                            width: 80, // Reduced width for a smaller button
+                            height: 120, // Reduced height for a smaller button
                             decoration: BoxDecoration(
                               color: const Color(0xFF7CBA3B),
                               borderRadius: BorderRadius.circular(60),
@@ -117,8 +128,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           Positioned(
                             bottom: _slideOffset + _floatingAnimation.value,
                             child: Container(
-                              width: 80,
-                              height: 80,
+                              width: 60, // Reduced width for a smaller button
+                              height: 60, // Reduced height for a smaller button
                               decoration: const BoxDecoration(
                                 color: Colors.black,
                                 shape: BoxShape.circle,
@@ -129,19 +140,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                                  fontSize: 16, // Smaller font size
                                 ),
                               ),
                             ),
                           ),
                           // Floating arrow above the "GO" button
                           Positioned(
-                            bottom:
-                                _slideOffset + 80 + _floatingAnimation.value,
+                            bottom: _slideOffset +
+                                60 +
+                                _floatingAnimation
+                                    .value, // Adjusted position based on new button size
                             child: const Icon(
                               Icons.keyboard_arrow_up,
                               color: Colors.black,
-                              size: 50,
+                              size:
+                                  40, // Adjusted size for better proportioning
                             ),
                           ),
                         ],

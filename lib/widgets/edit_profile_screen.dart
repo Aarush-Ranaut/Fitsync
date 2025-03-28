@@ -1,449 +1,470 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fitsync_app/widgets/gamification_provider.dart';
+import 'package:fitsync_app/widgets/exercise_selection.dart';
+import 'package:fitsync_app/widgets/infoedit.dart';
+import 'package:fitsync_app/widgets/home_screen.dart';
+import 'package:fitsync_app/constant.dart';
+import 'package:fitsync_app/models/onboarding_data.dart'; // Add this import for OnboardingData
 
-import 'dart:ui';
-import '../widgets/home_screen.dart'; // Import the HomeScreen
-
-class EditProfileScreen extends StatefulWidget {
-  final String userId; // Use userId instead of userEmail
-
-  const EditProfileScreen({super.key, required this.userId});
-  @override
-  _EditProfileScreenState createState() => _EditProfileScreenState();
-}
-
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  String? _profilePicture; // For base64 encoded profile picture
-  final ImagePicker _picker = ImagePicker();
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  DateTime? _birthDate; // To store the selected birth date
-  String? _selectedGender; // For dropdown gender selection
-
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserData();
-  }
-
-  Future<void> _fetchUserData() async {
-    try {
-      final DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(widget.userId)
-          .get(); // Use userId
-
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>;
-        _firstNameController.text = data['firstName'] ?? '';
-        _lastNameController.text = data['lastName'] ?? '';
-        _heightController.text = data['height']?.toString() ?? '';
-        _weightController.text = data['weight']?.toString() ?? '';
-        _selectedGender = data['gender'] ?? ''; // Fetch gender
-        if (data['birthDate'] != null) {
-          setState(() {
-            _birthDate = DateTime.parse(data['birthDate']);
-            _ageController.text = _calculateAge(_birthDate!).toString();
-          });
-        }
-        if (data['profileImage'] != null && data['profileImage'].isNotEmpty) {
-          setState(() {
-            _profilePicture = data['profileImage'];
-          });
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching data: $e")),
-      );
-    }
-  }
-
-  int _calculateAge(DateTime birthDate) {
-    final now = DateTime.now();
-    int age = now.year - birthDate.year;
-    if (now.month < birthDate.month ||
-        (now.month == birthDate.month && now.day < birthDate.day)) {
-      age--;
-    }
-    return age;
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _profilePicture = base64Encode(bytes);
-      });
-    }
-  }
-
-  Future<void> _pickBirthDate() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _birthDate = pickedDate;
-        _ageController.text = _calculateAge(pickedDate).toString();
-      });
-    }
-  }
-
-  Future<void> _saveData() async {
-    final String firstName = _firstNameController.text.trim();
-    final String lastName = _lastNameController.text.trim();
-    final String height = _heightController.text.trim();
-    final String weight = _weightController.text.trim();
-    final String age = _ageController.text.trim();
-    final String? gender = _selectedGender; // Get selected gender
-
-    if (firstName.isEmpty ||
-        lastName.isEmpty ||
-        height.isEmpty ||
-        weight.isEmpty ||
-        age.isEmpty ||
-        _birthDate == null ||
-        gender == null || // Validate gender
-        gender.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All fields are required")),
-      );
-      return;
-    }
-
-    try {
-      await _firestore.collection('users').doc(widget.userId).set({
-        'firstName': firstName,
-        'lastName': lastName,
-        'height': int.tryParse(height),
-        'weight': int.tryParse(weight),
-        'age': int.tryParse(age),
-        'birthDate':
-            _birthDate!.toIso8601String(), // Save birth date as ISO string
-        'profileImage': _profilePicture ?? '',
-        'gender': gender, // Save gender
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Data saved successfully")),
-      );
-
-      // Redirect to HomeScreen after saving
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(username: firstName),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving data: $e")),
-      );
-    }
-  }
-
-  void _showImageInFullScreen() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-                child: Container(
-                  color: Colors.black.withOpacity(0.5),
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-              },
-              child: CircleAvatar(
-                radius: 120,
-                backgroundImage: _profilePicture != null
-                    ? MemoryImage(base64Decode(_profilePicture!))
-                    : null,
-                child: _profilePicture == null
-                    ? const Icon(
-                        Icons.person,
-                        size: 120,
-                        color: Colors.white,
-                      )
-                    : null,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class EditProfileScreen extends StatelessWidget {
+  final OnboardingData onboardingData; // Add this parameter
+  const EditProfileScreen({required this.onboardingData, Key? key})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
         title: const Text(
-          "Edit Profile",
+          'Profile & Achievements',
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
+        backgroundColor: const Color(0xFF0A2E1A),
+        elevation: 0,
       ),
-      resizeToAvoidBottomInset:
-          true, // Ensure the screen resizes to avoid the keyboard
-      body: SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0A2E1A), Color(0xFF000000)],
+          ),
+        ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: _showImageInFullScreen,
-                    child: CircleAvatar(
-                      radius: 70,
-                      backgroundColor: Colors.grey[800],
-                      backgroundImage: _profilePicture != null
-                          ? MemoryImage(base64Decode(_profilePicture!))
-                          : null,
-                      child: _profilePicture == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 40,
-                              color: Colors.white,
-                            )
-                          : null,
-                    ),
+              Card(
+                elevation: 8,
+                shadowColor: Colors.black.withOpacity(0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                color: Colors.black.withOpacity(0.7),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Consumer<GamificationProvider>(
+                    builder: (context, gamification, child) {
+                      final User? user = FirebaseAuth.instance.currentUser;
+
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user?.uid)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+
+                          if (!snapshot.hasData || !snapshot.data!.exists) {
+                            return const Center(
+                                child: Text("User data not found"));
+                          }
+
+                          var userData = snapshot.data!;
+                          String userName =
+                              userData['firstName'] ?? "User Name";
+                          String profilePicUrl = userData['profileImage'] ?? "";
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Profile Image with a border and shadow
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFF00C853),
+                                        width: 2.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF00C853)
+                                              .withOpacity(0.3),
+                                          blurRadius: 10,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 40,
+                                      backgroundColor: Colors.grey[800],
+                                      backgroundImage: profilePicUrl.isNotEmpty
+                                          ? NetworkImage(profilePicUrl)
+                                              as ImageProvider
+                                          : const AssetImage(
+                                              "assets/default_avatar.png"),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+
+                                  // Profile Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          userName,
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00C853)
+                                                .withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: const Color(0xFF00C853),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            "Level ${gamification.level}",
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF00C853),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          "Total Points: ${gamification.points}",
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Edit Profile Button
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.white70),
+                                    onPressed: () {
+                                      if (user != null) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                InfoEdit(userId: user.uid),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content:
+                                                Text("User not logged in."),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+
+                              // XP Progress Bar
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Experience",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                      Text(
+                                        "${gamification.experience}/${GamificationProvider.levelUpThreshold}",
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF00C853),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: LinearProgressIndicator(
+                                      value: gamification.experience /
+                                          GamificationProvider.levelUpThreshold,
+                                      backgroundColor: Colors.grey[800],
+                                      color: const Color(0xFF00C853),
+                                      minHeight: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: _pickImage,
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.green,
-                        child: const Icon(
-                          Icons.edit,
-                          size: 20,
-                          color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 🔹 Achievements Section
+              Card(
+                elevation: 8,
+                shadowColor: Colors.black.withOpacity(0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                color: Colors.black.withOpacity(0.7),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Consumer<GamificationProvider>(
+                    builder: (context, gamification, child) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFF00C853).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.emoji_events,
+                                  color: Color(0xFF00C853),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Achievements",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Streak Display with enhanced styling
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey[800]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.local_fire_department,
+                                        color: Colors.orange,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      "Streak: ${gamification.streak} days",
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 32,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      gamification.checkStreak();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00C853),
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      elevation: 2,
+                                    ),
+                                    child: const Text(
+                                      "Check",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Streak Badges
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              _buildStreakBadge(
+                                  "1 Day", gamification.streak >= 1),
+                              _buildStreakBadge(
+                                  "1 Week", gamification.streak >= 7),
+                              _buildStreakBadge(
+                                  "10 Days", gamification.streak >= 10),
+                              _buildStreakBadge(
+                                  "20 Days", gamification.streak >= 20),
+                              _buildStreakBadge(
+                                  "1 Month", gamification.streak >= 30),
+                              _buildStreakBadge(
+                                  "2 Months", gamification.streak >= 60),
+                              _buildStreakBadge(
+                                  "3 Months", gamification.streak >= 90),
+                              _buildStreakBadge(
+                                  "6 Months", gamification.streak >= 180),
+                              _buildStreakBadge(
+                                  "1 Year", gamification.streak >= 365),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Exercise button
+              Center(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeScreen(
+                              onboardingData:
+                                  onboardingData), // Use the passed value
                         ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00C853),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _firstNameController,
-                decoration: InputDecoration(
-                  labelText: 'First Name',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(
-                  labelText: 'Last Name',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.white70),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _heightController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Height (cm)',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.white70),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _weightController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Weight (kg)',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.white70),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: _pickBirthDate,
-                child: AbsorbPointer(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Birth Date',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.white70),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.green),
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.calendar_today,
-                        color: Colors.white70,
-                      ),
+                      elevation: 6,
+                      shadowColor: const Color(0xFF00C853).withOpacity(0.5),
                     ),
-                    controller: TextEditingController(
-                      text: _birthDate != null
-                          ? "${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}"
-                          : '',
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.fitness_center, size: 20),
+                        SizedBox(width: 10),
+                        Text(
+                          "Go to Workout",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
-              AbsorbPointer(
-                child: TextField(
-                  controller: _ageController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Age',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white70),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.green),
-                    ),
-                  ),
-                  style: const TextStyle(color: Colors.white),
-                  readOnly: true, // Make the TextField read-only
-                ),
-              ),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: InputDecoration(
-                  labelText: 'Gender',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.white70),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
-                dropdownColor:
-                    Colors.grey[900], // Background color of the dropdown menu
-                style: const TextStyle(
-                    color: Colors.white), // Text color of the selected item
-                items: <String>['Male', 'Female', 'Other'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      value,
-                      style: const TextStyle(
-                          color: Colors.white), // Text color of dropdown items
-                    ),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    _selectedGender = newValue;
-                  });
-                },
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveData,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    "Save",
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20), // Add extra space at the bottom
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStreakBadge(String label, bool isAchieved) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isAchieved
+            ? const Color(0xFF00C853).withOpacity(0.2)
+            : Colors.grey[800],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isAchieved ? const Color(0xFF00C853) : Colors.grey[700]!,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAchieved ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: isAchieved ? const Color(0xFF00C853) : Colors.grey[600],
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isAchieved ? Colors.white : Colors.grey[400],
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
