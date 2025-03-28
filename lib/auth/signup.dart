@@ -30,7 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
         // Check if the user already exists in Firestore using UID
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
-            .doc(user.uid) // Use UID instead of email
+            .doc(user.uid)
             .get();
 
         if (userDoc.exists) {
@@ -41,7 +41,17 @@ class _SignupScreenState extends State<SignupScreen> {
             MaterialPageRoute(builder: (context) => SigninScreen()),
           );
         } else {
-          // New user, navigate to ProfileScreen with UID
+          // New user, create a basic Firestore document
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+            'username':
+                user.displayName ?? '', // Optional: Use Google display name
+          }, SetOptions(merge: true));
+
           _showSnackBar("Signup Successful!");
           Navigator.pushReplacement(
             context,
@@ -57,23 +67,42 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
 // Updated _signup method
+  // In signup.dart
   Future<void> _signup(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    // Validation checks remain the same
+    // Validation checks (add your existing validation here)
+    if (password != confirmPassword) {
+      _showSnackBar("Passwords do not match");
+      return;
+    }
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar("Please fill in all fields");
+      return;
+    }
 
     try {
       final user =
           await AuthService().createUserWithEmailAndPassword(email, password);
 
       if (user != null) {
+        // Create a basic Firestore document for the user
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+            {
+              'email': email,
+              'createdAt': FieldValue.serverTimestamp(),
+              // Add other default fields if needed, e.g., 'username': ''
+            },
+            SetOptions(
+                merge:
+                    true)); // merge: true ensures we don’t overwrite existing data later
+
         _showSnackBar("Signup Successful!");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            // Pass UID instead of email to ProfileScreen
             builder: (context) => ProfileScreen(userId: user.uid),
           ),
         );

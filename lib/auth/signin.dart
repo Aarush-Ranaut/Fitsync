@@ -23,7 +23,7 @@ class SigninScreen extends StatelessWidget {
             .get();
 
         if (userDoc.exists) {
-          String username = userDoc.data()?['username'] ?? user.email ?? '';
+          // Proceed to HomeScreen even if some fields are missing
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -31,6 +31,7 @@ class SigninScreen extends StatelessWidget {
             ),
           );
         } else {
+          // This case should no longer occur with the signup fix, but keep it as a fallback
           await AuthService().signOut();
           _showSnackBar(context, "User data not found. Please sign up.");
         }
