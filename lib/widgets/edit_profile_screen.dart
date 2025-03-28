@@ -1,10 +1,8 @@
 // import 'dart:convert';
-
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
 // import 'package:image_picker/image_picker.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
-
 // import 'dart:ui';
 // import '../widgets/home_screen.dart'; // Import the HomeScreen
 
@@ -90,19 +88,68 @@
 //   }
 
 //   Future<void> _pickBirthDate() async {
+//     final DateTime today = DateTime.now();
+//     final DateTime minAgeDate =
+//         DateTime(today.year - 3, today.month, today.day);
+
 //     final DateTime? pickedDate = await showDatePicker(
 //       context: context,
-//       initialDate: _birthDate ?? DateTime.now(),
+//       initialDate: _birthDate ?? minAgeDate,
 //       firstDate: DateTime(1900),
-//       lastDate: DateTime.now(),
+//       lastDate: minAgeDate,
+//       builder: (context, child) {
+//         return Theme(
+//           data: ThemeData.dark().copyWith(
+//             colorScheme: const ColorScheme.dark(
+//               primary: Colors.green,
+//               onPrimary: Colors.black,
+//               surface: Colors.black,
+//               onSurface: Colors.white,
+//             ),
+//             dialogBackgroundColor: Colors.black,
+//           ),
+//           child: child!,
+//         );
+//       },
 //     );
 
 //     if (pickedDate != null) {
-//       setState(() {
-//         _birthDate = pickedDate;
-//         _ageController.text = _calculateAge(pickedDate).toString();
-//       });
+//       final int age = _calculateAge(pickedDate);
+//       if (age < 3) {
+//         _showAgeRestrictionDialog();
+//       } else {
+//         setState(() {
+//           _birthDate = pickedDate;
+//           _ageController.text = age.toString();
+//         });
+//       }
 //     }
+//   }
+
+//   void _showAgeRestrictionDialog() {
+//     showDialog(
+//       context: context,
+//       builder: (context) => AlertDialog(
+//         backgroundColor: Colors.black,
+//         title: const Text(
+//           "Age Restriction",
+//           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+//         ),
+//         content: const Text(
+//           "You must be at least 3 years old to use this app. Please select a birth date that meets this requirement.",
+//           style: TextStyle(color: Colors.white70),
+//         ),
+//         actions: [
+//           TextButton(
+//             onPressed: () => Navigator.pop(context),
+//             child: const Text(
+//               "OK",
+//               style: TextStyle(color: Colors.green),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
 //   }
 
 //   Future<void> _saveData() async {
@@ -113,7 +160,6 @@
 //     final String age = _ageController.text.trim();
 //     final String? gender = _selectedGender;
 
-//     // Validate all fields including weight format
 //     if (firstName.isEmpty ||
 //         lastName.isEmpty ||
 //         height.isEmpty ||
@@ -127,7 +173,14 @@
 //       return;
 //     }
 
-//     // Validate weight is a valid double
+//     final int? parsedHeight = int.tryParse(height);
+//     if (parsedHeight == null || parsedHeight < 30 || parsedHeight > 250) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Height must be between 30 and 250 cm")),
+//       );
+//       return;
+//     }
+
 //     final double? parsedWeight = double.tryParse(weight);
 //     if (parsedWeight == null) {
 //       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,13 +189,19 @@
 //       return;
 //     }
 
+//     final int parsedAge = int.parse(age);
+//     if (parsedAge < 3) {
+//       _showAgeRestrictionDialog();
+//       return;
+//     }
+
 //     try {
 //       await _firestore.collection('users').doc(widget.userId).set({
 //         'firstName': firstName,
 //         'lastName': lastName,
-//         'height': int.tryParse(height),
-//         'weight': parsedWeight, // Save as double
-//         'age': int.tryParse(age),
+//         'height': parsedHeight,
+//         'weight': parsedWeight,
+//         'age': parsedAge,
 //         'birthDate': _birthDate!.toIso8601String(),
 //         'profileImage': _profilePicture ?? '',
 //         'gender': gender,
@@ -152,7 +211,6 @@
 //         const SnackBar(content: Text("Data saved successfully")),
 //       );
 
-//       // Navigate back to HomeScreen
 //       Navigator.pushReplacement(
 //         context,
 //         MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -182,9 +240,7 @@
 //               ),
 //             ),
 //             GestureDetector(
-//               onTap: () {
-//                 Navigator.of(context).pop();
-//               },
+//               onTap: () => Navigator.of(context).pop(),
 //               child: CircleAvatar(
 //                 radius: 120,
 //                 backgroundImage: _profilePicture != null
@@ -222,15 +278,13 @@
 //           ),
 //         ),
 //       ),
-//       resizeToAvoidBottomInset:
-//           true, // Ensure the screen resizes to avoid the keyboard
+//       resizeToAvoidBottomInset: true,
 //       body: SafeArea(
 //         child: SingleChildScrollView(
-//           padding: const EdgeInsets.symmetric(horizontal: 20.0),
+//           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
 //           child: Column(
 //             crossAxisAlignment: CrossAxisAlignment.center,
 //             children: [
-//               const SizedBox(height: 40),
 //               Stack(
 //                 alignment: Alignment.center,
 //                 children: [
@@ -270,157 +324,63 @@
 //                 ],
 //               ),
 //               const SizedBox(height: 40),
-//               TextField(
+//               _buildTextField(
 //                 controller: _firstNameController,
-//                 decoration: InputDecoration(
-//                   labelText: 'First Name',
-//                   labelStyle: const TextStyle(color: Colors.white70),
-//                   enabledBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                   focusedBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                 ),
-//                 style: const TextStyle(color: Colors.white),
+//                 label: 'First Name',
 //               ),
 //               const SizedBox(height: 20),
-//               TextField(
+//               _buildTextField(
 //                 controller: _lastNameController,
-//                 decoration: InputDecoration(
-//                   labelText: 'Last Name',
-//                   labelStyle: const TextStyle(color: Colors.white70),
-//                   enabledBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.white70),
-//                   ),
-//                   focusedBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                 ),
-//                 style: const TextStyle(color: Colors.white),
+//                 label: 'Last Name',
 //               ),
 //               const SizedBox(height: 20),
-//               TextField(
+//               _buildTextField(
 //                 controller: _heightController,
+//                 label: 'Height (30-250 cm)',
 //                 keyboardType: TextInputType.number,
-//                 decoration: InputDecoration(
-//                   labelText: 'Height (cm)',
-//                   labelStyle: const TextStyle(color: Colors.white70),
-//                   enabledBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.white70),
-//                   ),
-//                   focusedBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                 ),
-//                 style: const TextStyle(color: Colors.white),
+//                 inputFormatters: [HeightTextInputFormatter()],
 //               ),
 //               const SizedBox(height: 20),
-//               TextField(
+//               _buildTextField(
 //                 controller: _weightController,
-//                 keyboardType: TextInputType.numberWithOptions(
-//                     decimal: true), // Allow decimal input
-//                 inputFormatters: [
-//                   DecimalTextInputFormatter(), // Apply custom formatter
-//                 ],
-//                 decoration: InputDecoration(
-//                   labelText: 'Weight (kg)',
-//                   labelStyle: const TextStyle(color: Colors.white70),
-//                   enabledBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.white70),
-//                   ),
-//                   focusedBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                 ),
-//                 style: const TextStyle(color: Colors.white),
+//                 label: 'Weight (kg)',
+//                 keyboardType:
+//                     const TextInputType.numberWithOptions(decimal: true),
+//                 inputFormatters: [DecimalTextInputFormatter()],
 //               ),
 //               const SizedBox(height: 20),
 //               GestureDetector(
 //                 onTap: _pickBirthDate,
 //                 child: AbsorbPointer(
-//                   child: TextField(
-//                     decoration: InputDecoration(
-//                       labelText: 'Birth Date',
-//                       labelStyle: const TextStyle(color: Colors.white70),
-//                       enabledBorder: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(8),
-//                         borderSide: const BorderSide(color: Colors.white70),
-//                       ),
-//                       focusedBorder: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(8),
-//                         borderSide: const BorderSide(color: Colors.green),
-//                       ),
-//                       suffixIcon: const Icon(
-//                         Icons.calendar_today,
-//                         color: Colors.white70,
-//                       ),
-//                     ),
+//                   child: _buildTextField(
 //                     controller: TextEditingController(
 //                       text: _birthDate != null
 //                           ? "${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}"
 //                           : '',
 //                     ),
-//                     style: const TextStyle(color: Colors.white),
+//                     label: 'Birth Date (Min. age: 3)',
+//                     suffixIcon:
+//                         const Icon(Icons.calendar_today, color: Colors.white70),
 //                   ),
 //                 ),
 //               ),
 //               const SizedBox(height: 20),
-//               AbsorbPointer(
-//                 child: TextField(
-//                   controller: _ageController,
-//                   keyboardType: TextInputType.number,
-//                   decoration: InputDecoration(
-//                     labelText: 'Age',
-//                     labelStyle: const TextStyle(color: Colors.white70),
-//                     enabledBorder: OutlineInputBorder(
-//                       borderRadius: BorderRadius.circular(8),
-//                       borderSide: const BorderSide(color: Colors.white70),
-//                     ),
-//                     focusedBorder: OutlineInputBorder(
-//                       borderRadius: BorderRadius.circular(8),
-//                       borderSide: const BorderSide(color: Colors.green),
-//                     ),
-//                   ),
-//                   style: const TextStyle(color: Colors.white),
-//                   readOnly: true, // Make the TextField read-only
-//                 ),
+//               _buildTextField(
+//                 controller: _ageController,
+//                 label: 'Age',
+//                 readOnly: true,
 //               ),
 //               const SizedBox(height: 20),
 //               DropdownButtonFormField<String>(
 //                 value: _selectedGender,
-//                 decoration: InputDecoration(
-//                   labelText: 'Gender',
-//                   labelStyle: const TextStyle(color: Colors.white70),
-//                   enabledBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.white70),
-//                   ),
-//                   focusedBorder: OutlineInputBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                     borderSide: const BorderSide(color: Colors.green),
-//                   ),
-//                 ),
-//                 dropdownColor:
-//                     Colors.grey[900], // Background color of the dropdown menu
-//                 style: const TextStyle(
-//                     color: Colors.white), // Text color of the selected item
+//                 decoration: _buildInputDecoration(label: 'Gender'),
+//                 dropdownColor: Colors.grey[900],
+//                 style: const TextStyle(color: Colors.white),
 //                 items: <String>['Male', 'Female', 'Other'].map((String value) {
 //                   return DropdownMenuItem<String>(
 //                     value: value,
-//                     child: Text(
-//                       value,
-//                       style: const TextStyle(
-//                           color: Colors.white), // Text color of dropdown items
-//                     ),
+//                     child: Text(value,
+//                         style: const TextStyle(color: Colors.white)),
 //                   );
 //                 }).toList(),
 //                 onChanged: (newValue) {
@@ -440,6 +400,7 @@
 //                     shape: RoundedRectangleBorder(
 //                       borderRadius: BorderRadius.circular(8),
 //                     ),
+//                     elevation: 5,
 //                   ),
 //                   child: const Text(
 //                     "Save",
@@ -451,11 +412,49 @@
 //                   ),
 //                 ),
 //               ),
-//               const SizedBox(height: 20), // Add extra space at the bottom
+//               const SizedBox(height: 20),
 //             ],
 //           ),
 //         ),
 //       ),
+//     );
+//   }
+
+//   Widget _buildTextField({
+//     required TextEditingController controller,
+//     required String label,
+//     TextInputType? keyboardType,
+//     List<TextInputFormatter>? inputFormatters,
+//     bool readOnly = false,
+//     Widget? suffixIcon,
+//   }) {
+//     return TextField(
+//       controller: controller,
+//       keyboardType: keyboardType,
+//       inputFormatters: inputFormatters,
+//       readOnly: readOnly,
+//       decoration: _buildInputDecoration(label: label, suffixIcon: suffixIcon),
+//       style: const TextStyle(color: Colors.white),
+//     );
+//   }
+
+//   InputDecoration _buildInputDecoration(
+//       {required String label, Widget? suffixIcon}) {
+//     return InputDecoration(
+//       labelText: label,
+//       labelStyle: const TextStyle(color: Colors.white70),
+//       enabledBorder: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(8),
+//         borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+//       ),
+//       focusedBorder: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(8),
+//         borderSide: const BorderSide(color: Colors.green, width: 2),
+//       ),
+//       filled: true,
+//       fillColor: Colors.grey[900],
+//       suffixIcon: suffixIcon,
+//       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 //     );
 //   }
 // }
@@ -466,19 +465,31 @@
 //     TextEditingValue oldValue,
 //     TextEditingValue newValue,
 //   ) {
-//     // Allow empty input
+//     if (newValue.text.isEmpty) return newValue;
+//     final RegExp regExp = RegExp(r'^\d*\.?\d{0,1}$');
+//     return regExp.hasMatch(newValue.text) ? newValue : oldValue;
+//   }
+// }
+
+// class HeightTextInputFormatter extends TextInputFormatter {
+//   @override
+//   TextEditingValue formatEditUpdate(
+//     TextEditingValue oldValue,
+//     TextEditingValue newValue,
+//   ) {
+//     // Allow empty input or any valid digit string during editing
 //     if (newValue.text.isEmpty) {
 //       return newValue;
 //     }
 
-//     // Regex to allow digits with optional decimal and up to one decimal place
-//     final RegExp regExp = RegExp(r'^\d*\.?\d{0,1}$');
-//     if (regExp.hasMatch(newValue.text)) {
-//       return newValue;
+//     // Regex to allow only digits (no decimals)
+//     final RegExp digitOnlyRegExp = RegExp(r'^\d+$');
+//     if (!digitOnlyRegExp.hasMatch(newValue.text)) {
+//       return oldValue;
 //     }
 
-//     // Return old value if new value is invalid
-//     return oldValue;
+//     // No range check here; defer to _saveData for final validation
+//     return newValue;
 //   }
 // }
 
@@ -510,6 +521,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedGender; // For dropdown gender selection
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final List<String> _validGenders = [
+    'Male',
+    'Female',
+    'Other'
+  ]; // Valid gender options
 
   @override
   void initState() {
@@ -530,7 +546,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _lastNameController.text = data['lastName'] ?? '';
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
-        _selectedGender = data['gender'] ?? ''; // Fetch gender
+
+        // Only set _selectedGender if it matches a valid option, otherwise null
+        String? fetchedGender = data['gender'];
+        if (fetchedGender != null && _validGenders.contains(fetchedGender)) {
+          _selectedGender = fetchedGender;
+        } else {
+          _selectedGender = null; // Default to null if invalid or empty
+        }
+
         if (data['birthDate'] != null) {
           setState(() {
             _birthDate = DateTime.parse(data['birthDate']);
@@ -860,7 +884,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 decoration: _buildInputDecoration(label: 'Gender'),
                 dropdownColor: Colors.grey[900],
                 style: const TextStyle(color: Colors.white),
-                items: <String>['Male', 'Female', 'Other'].map((String value) {
+                items: _validGenders.map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value,
@@ -961,18 +985,13 @@ class HeightTextInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Allow empty input or any valid digit string during editing
     if (newValue.text.isEmpty) {
       return newValue;
     }
-
-    // Regex to allow only digits (no decimals)
     final RegExp digitOnlyRegExp = RegExp(r'^\d+$');
     if (!digitOnlyRegExp.hasMatch(newValue.text)) {
       return oldValue;
     }
-
-    // No range check here; defer to _saveData for final validation
     return newValue;
   }
 }
