@@ -2227,7 +2227,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               ]
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
