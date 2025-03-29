@@ -1215,6 +1215,7 @@ import 'barcode_scanner.dart';
 import 'barcode_scanner_choice.dart';
 import '../widgets/ai_integration.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
+import 'gamification.dart';
 import 'ocr_processor.dart';
 import 'user_info/profile_screen.dart'; // For initial data completion
 import 'edit_profile_screen.dart'; // For editing existing profile
@@ -1331,7 +1332,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _navigateToBarcodeScanner(context);
           break;
         case 3:
-          _navigateToEditProfile(context); // Changed to EditProfileScreen
+          _navigateToEditProfile(context);
           break;
       }
     });
@@ -1346,12 +1347,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // void _navigateToEditProfile(BuildContext context) {
+  //   final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => EditProfileScreen(userId: userId),
+  //     ),
+  //   );
+  // }
+
   void _navigateToEditProfile(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EditProfileScreen(userId: userId),
+        builder: (context) => GamificationScreen(),
       ),
     );
   }
