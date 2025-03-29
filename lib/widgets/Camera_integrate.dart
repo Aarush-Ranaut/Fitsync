@@ -270,7 +270,7 @@ class _PoseScreenState extends State<PoseScreen> {
   int _selectedCameraIndex = 0; // Default: back camera
 
   // ✅ Server IP address
-  final String serverIP = "http://192.168.206.58:5050";
+  final String serverIP = "http://192.168.0.105:5050";
 
   @override
   void initState() {
