@@ -2187,7 +2187,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     final url = "https://world.openfoodfacts.org/api/v0/product/$barcode.json";
     try {
       final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final productData = jsonDecode(response.body);
         if (productData['status'] == 1) {
