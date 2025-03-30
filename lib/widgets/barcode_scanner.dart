@@ -1183,39 +1183,55 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         await _getIngredientsFromOpenFoodFacts(barcode);
 
     String productName = productInfo['product_name'] ?? "Unknown Product";
-    String ingredients = productInfo['ingredients'] ?? "";
+    String ingredients = productInfo['ingredients']?.trim() ?? "";
+    print("ingredients: $ingredients");
 
-    if (ingredients.isEmpty && productName != "Unknown Product") {
+    String ingredients1 = ""; // Initialize Gemini ingredients
+
+    if (productName != "Unknown Product") {
       final prompt = """
-        Provide a **concise and clear** breakdown of **$productName** with the following details:
+      Provide a **concise and clear** breakdown of **$productName** with the following details:
 
-        1. **Ingredients:** List only the key ingredients in a simple, readable format. No disclaimers.  
-        2. **Ingredient Components:** Mention if it contains dairy, soy, gluten, or any common allergens.  
-        3. **Health Hazards:** Briefly mention potential risks (e.g., allergies, high sugar, digestive issues).  
-        4. **Allergen Information:** List the allergens clearly. No need to repeat information.  
-        5. **Veg/Non-Veg Status:** Simply state if the product is vegetarian or non-vegetarian.  
+      1. **Ingredients:** List only the key ingredients in a simple, readable format. No disclaimers.  
+      2. **Ingredient Components:** Mention if it contains dairy, soy, gluten, or any common allergens.  
+      3. **Health Hazards:** Briefly mention potential risks (e.g., allergies, high sugar, digestive issues, etc).  
+      4. **Allergen Information:** List the allergens clearly. No need to repeat information.  
+      5. **Veg/Non-Veg Status:** Simply state if the product is vegetarian or non-vegetarian.  
 
-        **Keep it short, easy to read, and avoid unnecessary disclaimers or lengthy explanations.**  
-      """;
+      **Keep it short, easy to read, and avoid unnecessary disclaimers or lengthy explanations.**  
+    """;
 
-      ingredients =
+      ingredients1 =
           await _callGeminiAPI(prompt) ?? "Error fetching ingredients.";
     }
 
+    // Combine actual and Gemini ingredients
+    String combinedIngredients = ingredients.isNotEmpty
+        ? (ingredients1.isNotEmpty && !ingredients1.startsWith("Error")
+            ? "$ingredients, $ingredients1"
+            : ingredients)
+        : ingredients1;
+
     String caloriesPer100g = "Not available";
-    if (ingredients.isNotEmpty && !ingredients.startsWith("Error")) {
+
+    // Determine which ingredients to use for calorie calculation
+    String calorieIngredients =
+        ingredients.isNotEmpty ? ingredients : ingredients1;
+
+    if (calorieIngredients.isNotEmpty &&
+        !calorieIngredients.startsWith("Error")) {
       final caloriePrompt = """
-        Provide the calorie content per 100g for the following ingredients in **$productName**:  
+      Provide the calorie content per 100g for the following ingredients in **$productName**:  
 
-        **Ingredients:** $ingredients  
+      **Ingredients:** $calorieIngredients  
 
-        **Response format:**  
-        - **Ingredient Name:** Calories per 100g (e.g., Sugar: 387 kcal)  
-        - If an ingredient has **0 kcal**, mention it explicitly.  
-        - If exact calorie info is unavailable, state: "Check product label for accurate values."  
+      **Response format:**  
+      - **Ingredient Name:** Calories per 100g (e.g., Sugar: 387 kcal)  
+      - If an ingredient has **0 kcal**, mention it explicitly.  
+      - If exact calorie info is unavailable, state: "Check product label for accurate values."  
 
-        ⚡ Keep it **short, structured, and readable.** No unnecessary disclaimers.
-      """;
+      ⚡ Keep it **short, structured, and readable.** No unnecessary disclaimers.
+    """;
 
       caloriesPer100g =
           await _callGeminiAPI(caloriePrompt) ?? "Error fetching calorie info.";
@@ -1224,11 +1240,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     setState(() {
       _productDetails = {
         "product_name": productName,
-        "ingredients": ingredients,
+        "ingredients": combinedIngredients,
         "calories_per_100g": caloriesPer100g,
       };
       _productName = productName;
-      _ingredients = _formatText(ingredients);
+      _ingredients = _formatText(combinedIngredients);
       _calorieInfo = _formatText1(caloriesPer100g);
       _isProcessing = false;
       print("State updated with product details: $_productDetails");
