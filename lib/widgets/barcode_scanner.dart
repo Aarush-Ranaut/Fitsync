@@ -1385,8 +1385,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     );
   }
 
-  Widget _buildTextCard(String title, String content,
-      {bool selectable = false}) {
+  Widget _buildTextCard(String title, String content) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -1423,45 +1422,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 const SizedBox(height: 8),
                 if (title.contains("Ingredients") || title.contains("Calories"))
-                  selectable
-                      ? SelectableText.rich(
-                          TextSpan(
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: Colors.black87,
-                              height: 1.4,
-                            ),
-                            children: _formatTextWithBold(content),
-                          ),
-                        )
-                      : RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: Colors.black87,
-                              height: 1.4,
-                            ),
-                            children: _formatTextWithBold(content),
-                          ),
-                        )
+                  RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                      children: _formatTextWithBold(content),
+                    ),
+                  )
                 else
-                  selectable
-                      ? SelectableText(
-                          content,
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            height: 1.4,
-                          ),
-                        )
-                      : Text(
-                          content,
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            height: 1.4,
-                          ),
-                        ),
+                  Text(
+                    content,
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1570,16 +1549,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 const SizedBox(height: 24),
               ],
-              _buildTextCard("🔍 Scanned Barcode", _scannedBarcode,
-                  selectable: false),
+              _buildTextCard("🔍 Scanned Barcode", _scannedBarcode),
               const SizedBox(height: 16),
-              _buildTextCard("📌 Product Name", _productName, selectable: true),
+              _buildTextCard("📌 Product Name", _productName),
               const SizedBox(height: 16),
-              _buildTextCard("📝 Ingredients & Details", _ingredients,
-                  selectable: true),
+              _buildTextCard("📝 Ingredients & Details", _ingredients),
               const SizedBox(height: 16),
-              _buildTextCard("🔥 Calories per 100g", _calorieInfo,
-                  selectable: true),
+              _buildTextCard("🔥 Calories per 100g", _calorieInfo),
             ],
           ),
         ),
