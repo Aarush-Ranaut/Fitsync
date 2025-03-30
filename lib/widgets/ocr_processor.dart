@@ -732,7 +732,7 @@ class _OCRProcessorState extends State<OCRProcessor>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 1200),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
@@ -824,10 +824,10 @@ class _OCRProcessorState extends State<OCRProcessor>
         final data = jsonDecode(response.body);
         return data['candidates'][0]['content']['parts'][0]['text'];
       } else {
-        return "Error: API returned status code ${response.statusCode}";
+        return "Error: API returned status code";
       }
     } catch (e) {
-      return "Error fetching from Gemini API: $e";
+      return "Error fetching from Gemini API:";
     }
   }
 

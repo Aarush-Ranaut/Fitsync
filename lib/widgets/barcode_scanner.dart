@@ -1063,7 +1063,8 @@ class BarcodeScannerScreen extends StatefulWidget {
   _BarcodeScannerScreenState createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
+    with TickerProviderStateMixin {
   late BarcodeScanner _barcodeScanner;
   String _scannedBarcode = "Scanned barcode will appear here.";
   String _productName = "Product name will appear here.";
@@ -1073,20 +1074,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   File? _selectedImage;
   bool _isProcessing = false;
 
-  final String apiKey =
-      "AIzaSyBGEykAPgVXExWRmhROIYJIeisXudF9nfA"; // Replace with your Gemini API key
+  final String apiKey = "AIzaSyBGEykAPgVXExWRmhROIYJIeisXudF9nfA";
   final String geminiEndpoint =
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _barcodeScanner = BarcodeScanner(formats: [BarcodeFormat.all]);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
   }
 
   @override
   void dispose() {
     _barcodeScanner.close();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -1322,184 +1334,181 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   List<TextSpan> _formatTextWithBold(String text) {
     List<TextSpan> spans = [];
-
-    // Check if the text contains ** markers
-    if (text.contains('**')) {
-      // Handle text with ** markers (e.g., Ingredients & Details)
-      List<String> parts = text.split('**');
-      for (int i = 0; i < parts.length; i++) {
-        if (parts[i].isEmpty) continue;
-        spans.add(TextSpan(
-          text: parts[i],
-          style: GoogleFonts.roboto(
-            fontSize: 16,
-            color: Colors.black87,
-            height: 1.4,
-            fontWeight: i % 2 == 1 ? FontWeight.bold : FontWeight.normal,
-          ),
-        ));
-      }
-    } else {
-      // Handle calorie-like format without ** markers (e.g., Calories per 100g)
-      List<String> lines = text.split('\n');
-      for (String line in lines) {
-        if (line.trim().startsWith('- ')) {
-          final parts = line.trim().substring(2).split(':');
-          if (parts.length >= 2) {
-            spans.add(TextSpan(
-              text: '- ${parts[0]}:',
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                color: Colors.black87,
-                height: 1.4,
-                fontWeight: FontWeight.bold,
-              ),
-            ));
-            spans.add(TextSpan(
-              text: '${parts.sublist(1).join(':').trim()}\n',
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                color: Colors.black87,
-                height: 1.4,
-                fontWeight: FontWeight.normal,
-              ),
-            ));
-          } else {
-            spans.add(TextSpan(
-              text: '$line\n',
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                color: Colors.black87,
-                height: 1.4,
-                fontWeight: FontWeight.normal,
-              ),
-            ));
-          }
-        } else {
-          spans.add(TextSpan(
-            text: '$line\n',
-            style: GoogleFonts.roboto(
-              fontSize: 16,
-              color: Colors.black87,
-              height: 1.4,
-              fontWeight: FontWeight.normal,
-            ),
-          ));
-        }
-      }
+    List<String> parts = text.split('**');
+    for (int i = 0; i < parts.length; i++) {
+      if (parts[i].isEmpty) continue;
+      spans.add(TextSpan(
+        text: parts[i],
+        style: GoogleFonts.roboto(
+          fontSize: 16,
+          color: Colors.black87,
+          height: 1.4,
+          fontWeight: i % 2 == 1 ? FontWeight.bold : FontWeight.normal,
+        ),
+      ));
     }
-
     return spans;
   }
 
   Widget _buildImageDisplay() {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _selectedImage != null
+                  ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                  : Container(
+                      color: const Color(0xFF1E1E1E),
+                      child:
+                          Icon(Icons.image, size: 100, color: Colors.grey[400]),
+                    ),
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: _selectedImage != null
-            ? Image.file(_selectedImage!, fit: BoxFit.cover)
-            : Container(
-                color: const Color(0xFF1E1E1E),
-                child: Icon(Icons.image, size: 100, color: Colors.grey[400]),
-              ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildTextCard(String title, String content) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.roboto(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (title.contains("Ingredients") || title.contains("Calories"))
-            RichText(
-              text: TextSpan(
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: Colors.black87,
-                  height: 1.4,
+  Widget _buildTextCard(String title, String content,
+      {bool selectable = false}) {
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
-                children: _formatTextWithBold(content),
-              ),
-            )
-          else
-            Text(
-              content,
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                color: Colors.black87,
-                height: 1.4,
-              ),
+              ],
             ),
-        ],
-      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.roboto(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (title.contains("Ingredients") || title.contains("Calories"))
+                  selectable
+                      ? SelectableText.rich(
+                          TextSpan(
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                            children: _formatTextWithBold(content),
+                          ),
+                        )
+                      : RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                            children: _formatTextWithBold(content),
+                          ),
+                        )
+                else
+                  selectable
+                      ? SelectableText(
+                          content,
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        )
+                      : Text(
+                          content,
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildIconButton(
       {required IconData icon, required VoidCallback onPressed}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, 10 * (1 - _fadeAnimation.value)),
+          child: Opacity(
+            opacity: _fadeAnimation.value,
+            child: GestureDetector(
+              onTap: onPressed,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFB4EC51), Color(0xFF9BEC00)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF8ACA7A).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF1E1E1E),
+                  size: 32,
+                ),
+              ),
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF8ACA7A).withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            )
-          ],
-        ),
-        child: Icon(icon,
-            color: const Color(0xFF1E1E1E),
-            size: 32), // Changed color to dark gray
-      ),
+        );
+      },
     );
   }
 
@@ -1561,13 +1570,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 ),
                 const SizedBox(height: 24),
               ],
-              _buildTextCard("🔍 Scanned Barcode", _scannedBarcode),
+              _buildTextCard("🔍 Scanned Barcode", _scannedBarcode,
+                  selectable: false),
               const SizedBox(height: 16),
-              _buildTextCard("📌 Product Name", _productName),
+              _buildTextCard("📌 Product Name", _productName, selectable: true),
               const SizedBox(height: 16),
-              _buildTextCard("📝 Ingredients & Details", _ingredients),
+              _buildTextCard("📝 Ingredients & Details", _ingredients,
+                  selectable: true),
               const SizedBox(height: 16),
-              _buildTextCard("🔥 Calories per 100g", _calorieInfo),
+              _buildTextCard("🔥 Calories per 100g", _calorieInfo,
+                  selectable: true),
             ],
           ),
         ),
