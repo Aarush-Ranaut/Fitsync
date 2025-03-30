@@ -784,24 +784,34 @@ class _OCRProcessorState extends State<OCRProcessor>
   }
 
   Future<String> _fetchIngredients(String extractedText) async {
-    final prompt =
-        "List the ingredients, ingredient components, health hazards, allergen information, "
-        "and whether it is veg or non-veg for $extractedText. Do not provide any extra information.";
+    final prompt = """
+        Provide a **concise and clear** breakdown of **$extractedText** with the following details:
+
+        1. **Ingredients:** List only the key ingredients in a simple, readable format. No disclaimers.  
+        2. **Ingredient Components:** Mention if it contains dairy, soy, gluten, or any common allergens.  
+        3. **Health Hazards:** Briefly mention potential risks (e.g., allergies, high sugar, digestive issues).  
+        4. **Allergen Information:** List the allergens clearly. No need to repeat information.  
+        5. **Veg/Non-Veg Status:** Simply state if the product is vegetarian or non-vegetarian.  
+
+        **Keep it short, easy to read, and avoid unnecessary disclaimers or lengthy explanations.**  
+      """;
     return await _callGeminiAPI(prompt);
   }
 
   Future<String> _fetchCalories(String ingredients) async {
-    final prompt =
-        "Provide the calorie content per 100 grams for each of the following ingredients. "
-        "If an ingredient does not contribute calories, state '0 kcal'. "
-        "Format the response as follows:\n"
-        "Ingredient: Calories per 100g\n"
-        "Example:\n"
-        "Sugar: 387 kcal\n"
-        "Carbonated Water: 0 kcal\n"
-        "Acidity Regulator (330): 0 kcal\n"
-        "Ingredients: $ingredients";
-    return await _callGeminiAPI(prompt);
+    final caloriePrompt = """
+        Provide the calorie content per 100g for the following ingredients:  
+
+        **Ingredients:** $ingredients  
+
+        **Response format:**  
+        - **Ingredient Name:** Calories per 100g (e.g., Sugar: 387 kcal)  
+        - If an ingredient has **0 kcal**, mention it explicitly.  
+        - If exact calorie info is unavailable, state: "Check product label for accurate values."  
+
+        ⚡ Keep it **short, structured, and readable.** No unnecessary disclaimers.
+      """;
+    return await _callGeminiAPI(caloriePrompt);
   }
 
   Future<String> _callGeminiAPI(String prompt) async {
