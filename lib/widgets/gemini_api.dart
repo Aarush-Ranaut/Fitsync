@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:fitsync_app/models/onboarding_data.dart';
+import './../models/onboarding_data.dart';
 
 class GeminiAI {
   static const String apiKey = "AIzaSyCfiFthFiVQ3wdO2Qa5_yUiD9ngbhfUebU";
@@ -25,7 +25,11 @@ class GeminiAI {
         ${jsonEncode(workoutPlan)}
 
         **Rules:**
-        - Ensure **6 different exercises** for the day.
+        - Strictly Use Excersises name from the Excersise Database i provided.
+        - Strictly Give Sets and Reps in Integer format.
+        - Ensure **10 different exercises** for the day if the user wants workout plan for 1 day.
+        - Ensure **7-8 different exercises** for the day if the user wants workout plan for 2 days or 3 days .
+        - Ensure **6 different exercises** for the day if the user wants workout plan for 4 days or 5 days or 6 days or 7 days .
         - Select exercises that target **$muscleFocus**.
         - Assign **2-3 target muscles** per exercise from the following list only:
           - Chest, Triceps, Lats, Biceps, Shoulder, Abs, Forearms, Traps, Glutes, Quads, Hamstring, Calves.
@@ -111,7 +115,7 @@ class GeminiAI {
             String rawResponse =
                 jsonData["candidates"][0]["content"]["parts"][0]["text"];
 
-            if (rawResponse.isEmpty) {
+            if (rawResponse == null || rawResponse.isEmpty) {
               print("Empty response received for Day $day");
               continue;
             }
@@ -160,12 +164,12 @@ String getMuscleFocus(int day, int workoutDays, List<String> focusAreas) {
 
   if (workoutDays == 1) {
     muscleSplits = [
-      ["Full Body"]
+      ["Full Body (Chest, Back, Shoulders, Arms,Triceps, Legs, Abs)"]
     ];
   } else if (workoutDays == 2) {
     muscleSplits = [
-      ["Upper Body"],
-      ["Lower Body"]
+      ["Upper Body (Chest, Back, Shoulders, Biceps, Triceps)"],
+      ["Lower Body (Legs)"]
     ];
   } else if (workoutDays == 3) {
     muscleSplits = [

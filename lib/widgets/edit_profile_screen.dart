@@ -391,8 +391,9 @@ class EditProfileScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => HomeScreen(
-                              onboardingData:
-                                  onboardingData), // Use the passed value
+                            onboardingData: onboardingData,
+                            showEnergyDialog: () {},
+                          ), // Use the passed value
                         ),
                       );
                     },

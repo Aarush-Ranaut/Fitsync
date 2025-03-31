@@ -71,6 +71,7 @@ class ExerciseSelectionScreen extends StatelessWidget {
                 experience: 'Beginner', // Default value
                 workoutFrequency: 3, // Default value
               ),
+              showEnergyDialog: () {},
             ),
           ),
           (route) => false, // Clear stack and set HomeScreen as root

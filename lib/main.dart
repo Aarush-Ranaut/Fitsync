@@ -30,10 +30,8 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // Function to check if the user is logged in
   Future<bool> _checkLoginStatus() async {
-    await Future.delayed(
-        const Duration(seconds: 1)); // Optional: simulate delay for splash
+    await Future.delayed(const Duration(seconds: 1));
     return FirebaseAuth.instance.currentUser != null;
   }
 
@@ -49,7 +47,6 @@ class MyApp extends StatelessWidget {
         future: _checkLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Show a loading screen while checking auth status
             return const Scaffold(
               body: Center(
                 child: CircularProgressIndicator(
@@ -58,10 +55,8 @@ class MyApp extends StatelessWidget {
               ),
             );
           } else if (snapshot.hasData && snapshot.data == true) {
-            // User is logged in, go to MainScreen (HomeScreen)
             return const MainScreen();
           } else {
-            // User is not logged in, go to OnboardingScreen
             return const OnboardingScreen();
           }
         },
@@ -93,9 +88,7 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
 
-    // Handle navigation for specific tabs
     if (index == 2) {
-      // "Watch" tab (Chat AI equivalent)
       _showChatAIDialog();
     }
   }
@@ -118,6 +111,73 @@ class _MainScreenState extends State<MainScreen> {
           style: GoogleFonts.poppins(
             fontSize: 14,
             color: Colors.grey[400],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Close",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF89F336),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEnergyDialog(BuildContext context) {
+    final muscles = ['Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          "Muscle Energy Levels",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: muscles.length,
+            itemBuilder: (context, index) {
+              final muscle = muscles[index];
+              return ListTile(
+                title: Text(
+                  muscle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                trailing: Text(
+                  "${70 + index * 5}%",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                subtitle: LinearProgressIndicator(
+                  value: (70 + index * 5) / 100,
+                  backgroundColor: Colors.grey[700],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    (70 + index * 5) > 50
+                        ? const Color(0xFF89F336)
+                        : (70 + index * 5) > 25
+                            ? Colors.orange
+                            : Colors.red,
+                  ),
+                ),
+              );
+            },
           ),
         ),
         actions: [
@@ -202,18 +262,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          _buildPageContent(),
-          _buildBottomNavigationBar(),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPageContent() {
     var defaultOnboardingData = OnboardingData(
       goal: 'Build Muscle',
@@ -224,7 +272,10 @@ class _MainScreenState extends State<MainScreen> {
 
     switch (_selectedIndex) {
       case 0:
-        return HomeScreen(onboardingData: defaultOnboardingData);
+        return HomeScreen(
+          onboardingData: defaultOnboardingData,
+          showEnergyDialog: () => _showEnergyDialog(context),
+        );
       case 1:
         return const ExerciseSelectionScreen();
       case 2:
@@ -234,8 +285,31 @@ class _MainScreenState extends State<MainScreen> {
       case 3:
         return EditProfileScreen(onboardingData: defaultOnboardingData);
       default:
-        return HomeScreen(onboardingData: defaultOnboardingData);
+        return HomeScreen(
+          onboardingData: defaultOnboardingData,
+          showEnergyDialog: () => _showEnergyDialog(context),
+        );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: Stack(
+        children: [
+          _buildPageContent(),
+          _buildBottomNavigationBar(),
+        ],
+      ),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              onPressed: () => _showEnergyDialog(context),
+              backgroundColor: const Color(0xFF89F336),
+              child: const Icon(Icons.fitness_center, color: Colors.white),
+            )
+          : null,
+    );
   }
 }
 

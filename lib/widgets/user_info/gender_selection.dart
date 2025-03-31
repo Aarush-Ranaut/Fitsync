@@ -139,7 +139,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
                               currentStep: _currentStep,
                               totalSteps: _totalSteps,
                               progressValue: _progressAnimation.value,
-                              progressColor: const Color(0xFF8ACA7A),
+                              progressColor: const Color(0xFF7CBA3B),
                             );
                           },
                         ),
@@ -159,7 +159,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
                                 style: GoogleFonts.roboto(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF8ACA7A),
+                                  color: const Color(0xFF7CBA3B),
                                 ),
                               ),
                             ],
@@ -180,7 +180,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
                                   CircleAvatar(
                                     radius: 50,
                                     backgroundColor: selectedGender == "Male"
-                                        ? const Color(0xFF8ACA7A)
+                                        ? const Color(0xFF7CBA3B)
                                         : Colors.grey[800],
                                     child: const Icon(
                                       Icons.male,
@@ -210,7 +210,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
                                   CircleAvatar(
                                     radius: 50,
                                     backgroundColor: selectedGender == "Female"
-                                        ? const Color(0xFF8ACA7A)
+                                        ? const Color(0xFF7CBA3B)
                                         : Colors.grey[800],
                                     child: const Icon(
                                       Icons.female,
@@ -237,7 +237,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen>
                           child: ElevatedButton(
                             onPressed: _saveGender,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8ACA7A),
+                              backgroundColor: const Color(0xFF7CBA3B),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),

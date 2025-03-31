@@ -76,7 +76,7 @@ class _HeightPickerPageState extends State<HeightPickerPage>
                     ? FontWeight.bold
                     : FontWeight.normal,
                 color: height == _selectedHeight
-                    ? const Color(0xFF8ACA7A)
+                    ? const Color(0xFF7CBA3B)
                     : Colors.grey[400],
               ),
             ),
@@ -105,7 +105,7 @@ class _HeightPickerPageState extends State<HeightPickerPage>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF8ACA7A).withOpacity(0.3),
+                    color: const Color(0xFF7CBA3B).withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -122,7 +122,7 @@ class _HeightPickerPageState extends State<HeightPickerPage>
                 ),
                 child: Ink(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8ACA7A),
+                    color: const Color(0xFF7CBA3B),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
@@ -181,7 +181,7 @@ class _HeightPickerPageState extends State<HeightPickerPage>
                               currentStep: _currentStep,
                               totalSteps: _totalSteps,
                               progressValue: _progressAnimation.value,
-                              progressColor: const Color(0xFF8ACA7A),
+                              progressColor: const Color(0xFF7CBA3B),
                             );
                           },
                         ),
@@ -201,7 +201,7 @@ class _HeightPickerPageState extends State<HeightPickerPage>
                                 style: GoogleFonts.roboto(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF8ACA7A),
+                                  color: const Color(0xFF7CBA3B),
                                 ),
                               ),
                             ],

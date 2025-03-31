@@ -42,8 +42,8 @@ class _WeightPickerPageState extends State<WeightPickerPage>
 
     // Initialize the button color animation
     _buttonColorAnimation = ColorTween(
-      begin: const Color(0xFF8ACA7A),
-      end: const Color(0xFF8ACA7A),
+      begin: const Color(0xFF7CBA3B),
+      end: const Color.fromARGB(255, 65, 174, 69),
     ).animate(_animationController);
 
     // Initialize the progress bar animation
@@ -158,7 +158,7 @@ class _WeightPickerPageState extends State<WeightPickerPage>
                     ? FontWeight.bold
                     : FontWeight.normal,
                 color: weight == _selectedWeight
-                    ? const Color(0xFF8ACA7A)
+                    ? const Color(0xFF7CBA3B)
                     : Colors.grey[400],
               ),
             ),
@@ -187,7 +187,7 @@ class _WeightPickerPageState extends State<WeightPickerPage>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF8ACA7A).withOpacity(0.3),
+                    color: const Color(0xFF7CBA3B).withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -204,7 +204,7 @@ class _WeightPickerPageState extends State<WeightPickerPage>
                 ),
                 child: Ink(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8ACA7A),
+                    color: const Color(0xFF7CBA3B),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
@@ -274,7 +274,7 @@ class _WeightPickerPageState extends State<WeightPickerPage>
                                 style: GoogleFonts.roboto(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF8ACA7A),
+                                  color: const Color(0xFF7CBA3B),
                                 ),
                               ),
                             ],

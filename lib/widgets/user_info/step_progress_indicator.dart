@@ -12,7 +12,7 @@ class StepProgressIndicator extends StatelessWidget {
     required this.currentStep,
     required this.totalSteps,
     this.progressValue, // Optional parameter for animated progress
-    this.progressColor = const Color(0xFF8ACA7A), // Default green color
+    this.progressColor = const Color(0xFF7CBA3B), // Default green color
   }) : super(key: key);
 
   @override
@@ -42,7 +42,8 @@ class StepProgressIndicator extends StatelessWidget {
               value: progressValue ??
                   (currentStep / totalSteps), // Use progressValue if provided
               backgroundColor: Colors.grey[800], // Background color of the bar
-              valueColor: AlwaysStoppedAnimation<Color>(progressColor), // Progress color
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  progressColor), // Progress color
             ),
           ),
         ),

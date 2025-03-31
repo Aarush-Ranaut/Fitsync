@@ -1,13 +1,10 @@
-import 'package:fitsync_app/main.dart';
-import 'package:fitsync_app/widgets/user_info/height_picker_page.dart';
 import 'package:flutter/material.dart';
 import 'package:fitsync_app/auth/signin.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'auth_service.dart';
+import './auth_service.dart';
 import 'package:fitsync_app/widgets/user_info/profile_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:fitsync_app/models/onboarding_data.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   final OnboardingData onboardingData;
@@ -28,6 +25,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // Updated signUpWithGoogle method from the first code
   Future<void> signUpWithGoogle(BuildContext context) async {
     try {
       // Sign out from any existing sessions
@@ -36,15 +34,15 @@ class _SignupScreenState extends State<SignupScreen> {
       // Sign in with Google
       final user = await AuthService().signInWithGoogle();
 
-      if (user != null && user.uid.isNotEmpty) {
-        // Check if the user already exists in Firestore
+      if (user != null) {
+        // Check if the user already exists in Firestore using UID
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
 
         if (userDoc.exists) {
-          // Account already exists, redirect to sign-in
+          // Account already exists in Firestore, redirect to sign-in
           _showSnackBar("Account already exists. Please sign in.");
           Navigator.pushReplacement(
             context,
@@ -72,26 +70,25 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           );
         }
-      } else {
-        _showSnackBar("Error: Unable to retrieve user ID.");
       }
     } catch (e) {
-      _showSnackBar("Error during Google signup: $e");
+      _showSnackBar(e.toString());
     }
   }
 
+  // Updated _signup method from the first code
   Future<void> _signup(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      _showSnackBar("Please fill in all fields");
-      return;
-    }
-
+    // Validation checks
     if (password != confirmPassword) {
       _showSnackBar("Passwords do not match");
+      return;
+    }
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar("Please fill in all fields");
       return;
     }
 
@@ -99,7 +96,7 @@ class _SignupScreenState extends State<SignupScreen> {
       final user =
           await AuthService().createUserWithEmailAndPassword(email, password);
 
-      if (user != null && user.uid.isNotEmpty) {
+      if (user != null) {
         // Create a basic Firestore document for the user
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'email': email,
@@ -116,11 +113,9 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         );
-      } else {
-        _showSnackBar("Error: Unable to retrieve user ID.");
       }
     } catch (e) {
-      _showSnackBar("Error during signup: $e");
+      _showSnackBar(e.toString());
     }
   }
 
@@ -151,7 +146,7 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5CB85C).withOpacity(0.1),
+            color: const Color(0xFF7CBA3B).withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -180,7 +175,7 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF5CB85C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF7CBA3B), width: 1.5),
           ),
           filled: true,
           fillColor: const Color(0xFF121212),
@@ -194,7 +189,7 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget _buildButton({
     required String text,
     required VoidCallback onPressed,
-    Color backgroundColor = const Color(0xFF5CB85C),
+    Color backgroundColor = const Color(0xFF7CBA3B),
     Color textColor = Colors.white,
     IconData? icon,
     Image? customIcon,
@@ -288,7 +283,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         TextSpan(
                           text: 'Sync',
                           style: GoogleFonts.roboto(
-                            color: const Color(0xFF5CB85C),
+                            color: const Color(0xFF7CBA3B),
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
                           ),
@@ -354,7 +349,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   _buildButton(
                     text: 'Sign Up',
                     onPressed: () => _signup(context),
-                    backgroundColor: const Color(0xFF5CB85C),
+                    backgroundColor: const Color(0xFF7CBA3B),
                     icon: Icons.arrow_forward,
                   ),
                   const SizedBox(height: 24),
@@ -419,7 +414,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Text(
                           "Sign in",
                           style: GoogleFonts.roboto(
-                            color: const Color(0xFF5CB85C),
+                            color: const Color(0xFF7CBA3B),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),

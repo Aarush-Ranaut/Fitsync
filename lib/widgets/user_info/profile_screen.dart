@@ -52,8 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _buttonColorAnimation = ColorTween(
-      begin: const Color(0xFF5CB85C),
-      end: const Color(0xFF4CAF50),
+      begin: const Color(0xFF7CBA3B),
+      end: const Color.fromARGB(255, 65, 174, 69),
     ).animate(_animationController);
 
     _animationController.forward(); // Play the animation once
@@ -137,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF5CB85C),
+              primary: Color(0xFF7CBA3B),
               onPrimary: Colors.black,
               surface: Color(0xFF121212),
               onSurface: Colors.white,
@@ -269,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5CB85C).withOpacity(0.1),
+                    color: const Color(0xFF7CBA3B).withOpacity(0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -300,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: Color(0xFF5CB85C), width: 1.5),
+                        const BorderSide(color: Color(0xFF7CBA3B), width: 1.5),
                   ),
                   filled: true,
                   fillColor: const Color(0xFF121212),
@@ -333,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5CB85C).withOpacity(0.3),
+                    color: const Color(0xFF7CBA3B).withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -353,7 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     gradient: LinearGradient(
                       colors: [
                         _buttonColorAnimation?.value ?? const Color(0xFF5CB85C),
-                        const Color(0xFF4CAF50),
+                        const Color(0xFF7CBA3B),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -418,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   color: const Color(0xFF1E1E1E),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF5CB85C)
+                                      color: const Color(0xFF7CBA3B)
                                           .withOpacity(0.2),
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
@@ -449,7 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF5CB85C),
+                                    color: const Color(0xFF7CBA3B),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(

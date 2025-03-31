@@ -11,7 +11,13 @@ import 'gemini_api.dart';
 
 class HomeScreen extends StatefulWidget {
   final OnboardingData onboardingData;
-  const HomeScreen({required this.onboardingData, super.key});
+  final VoidCallback showEnergyDialog;
+
+  const HomeScreen({
+    required this.onboardingData,
+    required this.showEnergyDialog,
+    super.key,
+  });
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -153,78 +159,6 @@ class _HomeScreenState extends State<HomeScreen>
     return (storedEnergy + recovered).clamp(0.0, 100.0);
   }
 
-  void _showEnergyDialog(BuildContext context) {
-    final muscles = muscleEnergy.keys.toList();
-    final currentEnergies = {
-      for (var muscle in muscles) muscle: getCurrentEnergy(muscle)
-    };
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          "Muscle Energy Levels",
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: muscles.length,
-            itemBuilder: (context, index) {
-              final muscle = muscles[index];
-              final energy = currentEnergies[muscle]!;
-              return ListTile(
-                title: Text(
-                  muscle,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-                trailing: Text(
-                  "${energy.toStringAsFixed(1)}%",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
-                ),
-                subtitle: LinearProgressIndicator(
-                  value: energy / 100,
-                  backgroundColor: Colors.grey[700],
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    energy > 50
-                        ? const Color(0xFF89F336)
-                        : energy > 25
-                            ? Colors.orange
-                            : Colors.red,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Close",
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF89F336),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> loadWorkoutPlan() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -304,42 +238,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _showChatAIDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          "Chat with AI",
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        content: Text(
-          "This is a placeholder for the Chat AI feature.",
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.grey[400],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Close",
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF89F336),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _animationController.dispose();
@@ -348,91 +246,65 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          "Workout Planner",
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: _signOut,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 16),
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Column(
-                        children: [
-                          Text(
-                            "Welcome, ${_auth.currentUser?.email?.split('@')[0] ?? "User"}!",
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
+    return SafeArea(
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        Text(
+                          "Welcome, ${_auth.currentUser?.email?.split('@')[0] ?? "User"}!",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Goal: ${widget.onboardingData.goal}",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.grey[400],
-                              height: 1.5,
-                            ),
-                            textAlign: TextAlign.center,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Goal: ${widget.onboardingData.goal}",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[400],
+                            height: 1.5,
                           ),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: _activePlanHeader(),
-                          ),
-                          const SizedBox(height: 20),
-                          FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: _nextWorkoutSection(),
-                          ),
-                          const SizedBox(height: 20),
-                          _exerciseList(),
-                        ],
-                      ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: _activePlanHeader(),
+                        ),
+                        const SizedBox(height: 20),
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: _nextWorkoutSection(),
+                        ),
+                        const SizedBox(height: 20),
+                        _exerciseList(),
+                      ],
                     ),
                   ),
-                  _startWorkoutButton(),
-                ],
-              ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showEnergyDialog(context),
-        backgroundColor: const Color(0xFF89F336),
-        child: const Icon(Icons.fitness_center, color: Colors.white),
-      ),
+                ),
+                _startWorkoutButton(),
+              ],
+            ),
     );
   }
 

@@ -38,10 +38,8 @@ class _InfoEditState extends State<InfoEdit> {
 
   Future<void> _fetchUserData() async {
     try {
-      final DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(widget.userId)
-          .get();
+      final DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(widget.userId).get();
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
@@ -154,6 +152,7 @@ class _InfoEditState extends State<InfoEdit> {
               experience: 'Beginner', // Default or derive from user input
               workoutFrequency: 3, // Default or derive from user input
             ),
+            showEnergyDialog: () {},
           ),
         ),
       );

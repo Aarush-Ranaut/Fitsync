@@ -22,6 +22,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   bool _isVideoLoading = true;
   bool _hasVideoError = false;
   int selectedExerciseIndex = 0;
+  bool _isTimerDialogShowing = false;
 
   Timer? _timer;
   int _time = 0;
@@ -127,58 +128,58 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }
 
   void _logSet(int index) {
-    final currentExercise = widget.exercises[selectedExerciseIndex];
-    final currentSets = currentExercise.sets;
+  final currentExercise = widget.exercises[selectedExerciseIndex];
+  final currentSets = currentExercise.sets;
 
-    if (currentSets[index].weight <= 0) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: Text(
-            'Invalid Weight',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+  if (currentSets[index].weight <= 0) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          'Invalid Weight',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
           ),
-          content: Text(
-            'Please enter a valid weight before logging.',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[400],
-            ),
+        ),
+        content: Text(
+          'Please enter a valid weight before logging.',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[400],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'OK',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: const Color(0xFF89F336),
-                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF89F336),
               ),
             ),
-          ],
-        ),
-      );
-      return;
-    }
+          ),
+        ],
+      ),
+    );
+    return;
+  }
 
-    setState(() {
-      currentSets[index].isLogged = true;
-    });
+  setState(() {
+    currentSets[index].isLogged = true;
+  });
 
     // Pause video when logging
-    _ytController?.pause();
+  _ytController?.pause();
 
     // Only show timer if not all sets are logged
     if (currentSets.any((set) => !set.isLogged)) {
-      _showTimerDialog();
-    }
+    _showTimerDialog();
   }
+}
 
   void _showTimerDialog() {
     _isResting = true;
@@ -540,11 +541,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  set.reps = newReps;
-                });
-                Navigator.of(context).pop();
-              },
+              setState(() {
+                // Update all unlogged sets in current exercise
+                final currentExercise = widget.exercises[selectedExerciseIndex];
+                for (final s in currentExercise.sets) {
+                  if (!s.isLogged) {
+                    s.reps = newReps;
+                  }
+                }
+              });
+              Navigator.of(context).pop();
+            },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF89F336),
               ),
@@ -609,11 +616,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  set.weight = newWeight;
-                });
-                Navigator.of(context).pop();
-              },
+              setState(() {
+                // Update all unlogged sets in current exercise
+                final currentExercise = widget.exercises[selectedExerciseIndex];
+                for (final s in currentExercise.sets) {
+                  if (!s.isLogged) {
+                    s.weight = newWeight;
+                  }
+                }
+              });
+              Navigator.of(context).pop();
+            },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF89F336),
               ),
@@ -1153,7 +1166,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
+                  SizedBox(
                     width: 30,
                     child: Divider(
                       color: Colors.grey[400],
@@ -1176,7 +1189,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
+                  SizedBox(
                     width: 30,
                     child: Divider(
                       color: Colors.grey[400],
@@ -1201,7 +1214,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
+                  SizedBox(
                     width: 30,
                     child: Divider(
                       color: Colors.grey[400],

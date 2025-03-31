@@ -14,7 +14,7 @@ class ExperienceLevelScreen extends StatefulWidget {
 
 class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
     with SingleTickerProviderStateMixin {
-  List<String> selectedExperience = [];
+  String? selectedExperience;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -112,8 +112,7 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
                   itemCount: experienceLevels.length,
                   itemBuilder: (context, index) {
                     Map<String, dynamic> level = experienceLevels[index];
-                    bool isSelected =
-                        selectedExperience.contains(level["level"]);
+                    bool isSelected = selectedExperience == level["level"];
 
                     return _buildExperienceCard(level, isSelected);
                   },
@@ -134,12 +133,12 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8ACA7A) : const Color(0xFF1E1E1E),
+          color: isSelected ? const Color(0xFF7CBA3B) : const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? const Color(0xFF8ACA7A).withOpacity(0.3)
+                  ? const Color(0xFF7CBA3B).withOpacity(0.3)
                   : Colors.black.withOpacity(0.2),
               blurRadius: 8,
               offset: const Offset(0, 4),
@@ -225,7 +224,7 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
                         ? const Icon(
                             Icons.check,
                             size: 16,
-                            color: Color(0xFF8ACA7A),
+                            color: Color(0xFF7CBA3B),
                           )
                         : null,
                   ),
@@ -259,7 +258,9 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
             duration: const Duration(milliseconds: 300),
             margin: const EdgeInsets.only(bottom: 16),
             child: Text(
-              "${selectedExperience.length} of ${experienceLevels.length} levels selected",
+              selectedExperience != null
+                  ? "1 of ${experienceLevels.length} level selected"
+                  : "0 of ${experienceLevels.length} level selected",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.grey[400],
@@ -270,11 +271,11 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
           // Buttons
           Row(
             children: [
-              // Select All button
+              // Select All button (disabled)
               Expanded(
                 flex: 1,
                 child: TextButton(
-                  onPressed: _selectAll,
+                  onPressed: null, // Disable the select all button
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -287,7 +288,7 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white,
+                      color: Colors.grey[600], // Grey out the text
                     ),
                   ),
                 ),
@@ -299,10 +300,10 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
-                  onPressed: selectedExperience.isNotEmpty
+                  onPressed: selectedExperience != null
                       ? () {
                           widget.onboardingData.experience =
-                              selectedExperience.join(", ");
+                              selectedExperience!;
 
                           // Add haptic feedback
                           HapticFeedback.mediumImpact();
@@ -317,7 +318,7 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8ACA7A),
+                    backgroundColor: const Color(0xFF7CBA3B),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[700],
                     disabledForegroundColor: Colors.grey[400],
@@ -348,25 +349,7 @@ class _ExperienceLevelScreenState extends State<ExperienceLevelScreen>
     HapticFeedback.selectionClick();
 
     setState(() {
-      selectedExperience.contains(level)
-          ? selectedExperience.remove(level)
-          : selectedExperience.add(level);
-    });
-  }
-
-  void _selectAll() {
-    // Add haptic feedback
-    HapticFeedback.mediumImpact();
-
-    setState(() {
-      if (selectedExperience.length == experienceLevels.length) {
-        // If all are selected, deselect all
-        selectedExperience.clear();
-      } else {
-        // Otherwise select all
-        selectedExperience =
-            experienceLevels.map((level) => level["level"] as String).toList();
-      }
+      selectedExperience = level;
     });
   }
 }

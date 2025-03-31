@@ -85,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         fontFamily: 'Roboto', // Changed to Roboto
                         fontSize: 50,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF89F336),
+                        color: Color(0xFF7CBA3B),
                       ),
                     ),
                   ],

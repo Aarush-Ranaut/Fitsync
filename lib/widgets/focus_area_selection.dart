@@ -56,6 +56,7 @@ class _FocusAreaScreenState extends State<FocusAreaScreen>
   List<String> selectedAreas = [];
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final Color primaryGreen = const Color(0xFF7CBA3B); // Green color
 
   @override
   void initState() {
@@ -150,12 +151,12 @@ class _FocusAreaScreenState extends State<FocusAreaScreen>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8ACA7A) : const Color(0xFF1E1E1E),
+          color: isSelected ? primaryGreen : const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? const Color(0xFF8ACA7A).withOpacity(0.3)
+                  ? primaryGreen.withOpacity(0.3)
                   : Colors.black.withOpacity(0.2),
               blurRadius: 8,
               offset: const Offset(0, 4),
@@ -252,7 +253,7 @@ class _FocusAreaScreenState extends State<FocusAreaScreen>
                         ? const Icon(
                             Icons.check,
                             size: 16,
-                            color: Color(0xFF8ACA7A),
+                            color: Color(0xFF7CBA3B),
                           )
                         : null,
                   ),
@@ -343,7 +344,7 @@ class _FocusAreaScreenState extends State<FocusAreaScreen>
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8ACA7A),
+                    backgroundColor: primaryGreen,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[700],
                     disabledForegroundColor: Colors.grey[400],

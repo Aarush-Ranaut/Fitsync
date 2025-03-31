@@ -1,13 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fitsync_app/widgets/home_screen.dart';
-import 'package:fitsync_app/widgets/user_info/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'auth_service.dart';
 import 'signup.dart';
-import '../main.dart'; // Import MainScreen from main.dart
-import 'package:fitsync_app/models/onboarding_data.dart';
-import 'forgot_password_screen.dart'; // Import ForgotPasswordScreen
+import '../widgets/home_screen.dart';
+import '../widgets/user_info/profile_screen.dart';
+import 'forgot_password_screen.dart';
+import '../models/onboarding_data.dart';
 
 class SigninScreen extends StatefulWidget {
   const SigninScreen({super.key});
@@ -34,23 +33,21 @@ class _SigninScreenState extends State<SigninScreen> {
             .get();
 
         if (!userDoc.exists) {
-          // Redirect to ProfileScreen if no user data exists
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => ProfileScreen(
                 userId: user.uid,
                 onboardingData: OnboardingData(
-                  goal: 'Maintain', // Default value
-                  focusAreas: ['Full Body'], // Default value
-                  experience: 'Beginner', // Default value
-                  workoutFrequency: 3, // Default value
+                  goal: 'Maintain',
+                  focusAreas: ['Full Body'],
+                  experience: 'Beginner',
+                  workoutFrequency: 3,
                 ),
               ),
             ),
           );
         } else {
-          // Check if all required fields are present
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
           List<String> requiredFields = [
             'firstName',
@@ -67,34 +64,40 @@ class _SigninScreenState extends State<SigninScreen> {
               data[field].toString().isEmpty);
 
           if (isDataMissing) {
-            // Redirect to ProfileScreen if data is incomplete
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => ProfileScreen(
                   userId: user.uid,
                   onboardingData: OnboardingData(
-                    goal: 'Maintain', // Default value
-                    focusAreas: ['Full Body'], // Default value
-                    experience: 'Beginner', // Default value
-                    workoutFrequency: 3, // Default value
+                    goal: 'Maintain',
+                    focusAreas: ['Full Body'],
+                    experience: 'Beginner',
+                    workoutFrequency: 3,
                   ),
                 ),
               ),
             );
           } else {
-            // Proceed to MainScreen if all data is complete
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => const MainScreen(),
+                builder: (context) => HomeScreen(
+                  onboardingData: OnboardingData(
+                    goal: 'Maintain',
+                    focusAreas: ['Full Body'],
+                    experience: 'Beginner',
+                    workoutFrequency: 3,
+                  ),
+                  showEnergyDialog: () {},
+                ),
               ),
             );
           }
         }
       }
     } catch (e) {
-      _showSnackBar(e.toString());
+      _showSnackBar(context, e.toString());
     }
   }
 
@@ -109,23 +112,21 @@ class _SigninScreenState extends State<SigninScreen> {
             .get();
 
         if (!userDoc.exists) {
-          // Redirect to ProfileScreen if no user data exists
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => ProfileScreen(
                 userId: user.uid,
                 onboardingData: OnboardingData(
-                  goal: 'Maintain', // Default value
-                  focusAreas: ['Full Body'], // Default value
-                  experience: 'Beginner', // Default value
-                  workoutFrequency: 3, // Default value
+                  goal: 'Maintain',
+                  focusAreas: ['Full Body'],
+                  experience: 'Beginner',
+                  workoutFrequency: 3,
                 ),
               ),
             ),
           );
         } else {
-          // Check if all required fields are present
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
           List<String> requiredFields = [
             'firstName',
@@ -142,23 +143,21 @@ class _SigninScreenState extends State<SigninScreen> {
               data[field].toString().isEmpty);
 
           if (isDataMissing) {
-            // Redirect to ProfileScreen if data is incomplete
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => ProfileScreen(
                   userId: user.uid,
                   onboardingData: OnboardingData(
-                    goal: 'Maintain', // Default value
-                    focusAreas: ['Full Body'], // Default value
-                    experience: 'Beginner', // Default value
-                    workoutFrequency: 3, // Default value
+                    goal: 'Maintain',
+                    focusAreas: ['Full Body'],
+                    experience: 'Beginner',
+                    workoutFrequency: 3,
                   ),
                 ),
               ),
             );
           } else {
-            // Proceed to MainScreen if all data is complete
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -169,6 +168,7 @@ class _SigninScreenState extends State<SigninScreen> {
                     experience: 'Beginner',
                     workoutFrequency: 3,
                   ),
+                  showEnergyDialog: () {},
                 ),
               ),
             );
@@ -176,63 +176,8 @@ class _SigninScreenState extends State<SigninScreen> {
         }
       }
     } catch (e) {
-      _showSnackBar(e.toString());
+      _showSnackBar(context, e.toString());
     }
-  }
-
-  Future<void> resetPassword(BuildContext context) async {
-    String? email = emailController.text.trim();
-    final TextEditingController emailResetController =
-        TextEditingController(text: email);
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Reset Password',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.black,
-        content: TextField(
-          controller: emailResetController,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Email',
-            labelStyle: const TextStyle(color: Colors.grey),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF5CB85C)),
-            ),
-          ),
-          keyboardType: TextInputType.emailAddress,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await AuthService()
-                    .sendPasswordResetEmail(emailResetController.text.trim());
-                Navigator.pop(context);
-                _showSnackBar('Password reset email sent. Check your inbox.');
-              } catch (e) {
-                Navigator.pop(context);
-                _showSnackBar('Error: ${e.toString()}');
-              }
-            },
-            child: const Text(
-              'Send',
-              style: TextStyle(color: Color(0xFF5CB85C)),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _navigateToForgotPassword(BuildContext context) {
@@ -246,7 +191,7 @@ class _SigninScreenState extends State<SigninScreen> {
     );
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -410,7 +355,7 @@ class _SigninScreenState extends State<SigninScreen> {
                         TextSpan(
                           text: 'Sync',
                           style: GoogleFonts.roboto(
-                            color: const Color(0xFF5CB85C),
+                            color: const Color(0xFF7CBA3B),
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
                           ),
@@ -456,9 +401,8 @@ class _SigninScreenState extends State<SigninScreen> {
                   _buildButton(
                     text: 'Sign In',
                     onPressed: () => signIn(context),
-                    backgroundColor: const Color(0xFF5CB85C),
+                    backgroundColor: const Color(0xFF7CBA3B),
                     icon: Icons.arrow_forward,
-                    customIcon: null,
                   ),
                   const SizedBox(height: 16),
                   TextButton(
@@ -466,7 +410,7 @@ class _SigninScreenState extends State<SigninScreen> {
                     child: Text(
                       'Forgot Password?',
                       style: GoogleFonts.roboto(
-                        color: const Color(0xFF5CB85C),
+                        color: const Color(0xFF7CBA3B),
                         fontSize: 14,
                         decoration: TextDecoration.underline,
                       ),
@@ -542,7 +486,7 @@ class _SigninScreenState extends State<SigninScreen> {
                         child: Text(
                           "Sign up",
                           style: GoogleFonts.roboto(
-                            color: const Color(0xFF5CB85C),
+                            color: const Color(0xFF7CBA3B),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
