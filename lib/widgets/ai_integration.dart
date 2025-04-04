@@ -43,7 +43,8 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
   final List<Map<String, dynamic>> _messages = [];
   String height = 'unknown';
   String weight = 'unknown';
-  String age = 'unknown'; // New state variable for age
+  String age = 'unknown';
+  String gender = 'unknown'; // New state variable for gender
   int responseCounter = 0;
   DateTime? _previousDateTime;
 
@@ -91,7 +92,7 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
     _chat = _model?.startChat();
     _chat?.sendMessage(gpt.Content.text(
         "You are a smart fitness assistant. Provide concise, actionable advice based on user's stats: "
-        "Height: $height cm, Weight: $weight kg, Age: $age years. Keep responses brief (1-3 sentences) unless detailed explanations are needed. "
+        "Height: $height cm, Weight: $weight kg, Age: $age years, Gender: $gender. Keep responses brief (1-3 sentences) unless detailed explanations are needed. "
         "Always calculate BMI and other metrics when asked using the provided stats. Format numbers clearly. "
         "Politely decline non-fitness questions. Use simple language and bullet points when helpful."));
   }
@@ -108,6 +109,8 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
         if (userDoc.exists) {
           final newHeight = userDoc['height']?.toString() ?? 'unknown';
           final newWeight = userDoc['weight']?.toString() ?? 'unknown';
+          final newGender =
+              userDoc['gender']?.toString() ?? 'unknown'; // Fetch gender
           final firstName = userDoc['firstName']?.toString() ?? '';
 
           // Calculate age from birthDate
@@ -125,11 +128,15 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
             newAge = calculatedAge.toString();
           }
 
-          if (newHeight != height || newWeight != weight || newAge != age) {
+          if (newHeight != height ||
+              newWeight != weight ||
+              newAge != age ||
+              newGender != gender) {
             setState(() {
               height = newHeight;
               weight = newWeight;
-              age = newAge; // Update age
+              age = newAge;
+              gender = newGender; // Update gender
             });
             _updateChatSession();
             await _updateGreeting(firstName);
@@ -154,7 +161,7 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
             .get();
 
         final newGreeting = "Hi $firstName, I'm your fitness assistant. "
-            "Your stats: $height cm, $weight kg, $age years. How can I help today?";
+            "Your stats: $height cm, $weight kg, $age years, Gender: $gender. How can I help today?";
 
         if (greetingSnapshot.docs.isNotEmpty) {
           // Update existing greeting
@@ -202,7 +209,7 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
         if (userDoc.exists) {
           final firstName = userDoc['firstName']?.toString() ?? '';
           final greeting = "Hi $firstName, I'm your fitness assistant. "
-              "Your stats: $height cm, $weight kg, $age years. How can I help today?";
+              "Your stats: $height cm, $weight kg, $age years, Gender: $gender. How can I help today?";
 
           await _addMessageToFirestore('AI', greeting, isGreeting: true);
           setState(() {
