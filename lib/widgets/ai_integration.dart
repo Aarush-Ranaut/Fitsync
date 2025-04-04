@@ -108,8 +108,22 @@ class _AIIntegrationState extends State<AIIntegration> with RouteAware {
         if (userDoc.exists) {
           final newHeight = userDoc['height']?.toString() ?? 'unknown';
           final newWeight = userDoc['weight']?.toString() ?? 'unknown';
-          final newAge = userDoc['age']?.toString() ?? 'unknown'; // Fetch age
           final firstName = userDoc['firstName']?.toString() ?? '';
+
+          // Calculate age from birthDate
+          String newAge = 'unknown';
+          if (userDoc['birthDate'] != null) {
+            DateTime birthDate = DateTime.parse(userDoc['birthDate']);
+            DateTime today = DateTime.now();
+            int calculatedAge = today.year -
+                birthDate.year -
+                ((today.month < birthDate.month ||
+                        (today.month == birthDate.month &&
+                            today.day < birthDate.day))
+                    ? 1
+                    : 0);
+            newAge = calculatedAge.toString();
+          }
 
           if (newHeight != height || newWeight != weight || newAge != age) {
             setState(() {
