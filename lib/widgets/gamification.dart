@@ -719,7 +719,20 @@ class _GamificationScreenState extends State<GamificationScreen> {
           totalPoints = data['totalPoints'] ?? 0;
           streak = data['streak'] ?? 0;
           achievements = List<String>.from(data['achievements'] ?? []);
-          lastCheckIn = data['lastCheckIn'];
+
+          final lastCheckInValue = data['lastCheckIn'];
+          if (lastCheckInValue is Timestamp) {
+            lastCheckIn = lastCheckInValue;
+          } else if (lastCheckInValue is String) {
+            try {
+              lastCheckIn =
+                  Timestamp.fromDate(DateTime.parse(lastCheckInValue));
+            } catch (e) {
+              lastCheckIn = null; // Fallback if parsing fails
+            }
+          } else {
+            lastCheckIn = null;
+          }
         });
         _checkStreakStatus();
       } else {
