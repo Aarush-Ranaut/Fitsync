@@ -127,15 +127,47 @@
 //   }
 // }
 
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:fitsync_app/onboarding_screen.dart';
+// import 'package:flutter/material.dart';
+// import 'utils/session_tracker.dart'; // <-- Make sure this path is correct
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp();
+//   SessionTracker().initialize(); // Initialize the session tracker
+
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'FitSync',
+//       theme: ThemeData(
+//         primarySwatch: Colors.green,
+//       ),
+//       home: OnboardingScreen(), // Keep redirection unchanged
+//     );
+//   }
+// }
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fitsync_app/onboarding_screen.dart';
 import 'package:flutter/material.dart';
-import 'utils/session_tracker.dart'; // <-- Make sure this path is correct
+import 'utils/session_tracker.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  SessionTracker().initialize(); // Initialize the session tracker
+  SessionTracker().initialize();
+
+  // Initialize notifications (basic init only)
+  await NotificationService().initNotifications();
 
   runApp(const MyApp());
 }
@@ -150,7 +182,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      home: OnboardingScreen(), // Keep redirection unchanged
+      home: OnboardingScreen(),
     );
   }
 }
